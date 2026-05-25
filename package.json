@@ -40,7 +40,7 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.13",
+    "vite": "^8.0.14",
     "vite-plugin-sitemap": "^0.8.2"
   }
 }
