@@ -35,6 +35,15 @@ test("app smoke", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("mobile header exposes about navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoApp(page);
+
+  const aboutLink = page.getByRole("link", { name: /^about$/i });
+  await expect(aboutLink).toBeVisible();
+  await expect(aboutLink).toHaveAttribute("href", "./about/");
+});
+
 test("about page smoke", async ({ page }) => {
   await page.goto("/about/");
 

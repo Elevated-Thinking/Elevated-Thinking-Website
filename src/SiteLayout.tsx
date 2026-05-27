@@ -27,7 +27,7 @@ export function SiteLayout({
       </a>
 
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[var(--color-background)]/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-6">
           <a
             href={isAbout ? "../" : "#top"}
             className="flex items-center"
@@ -42,7 +42,7 @@ export function SiteLayout({
             />
           </a>
           <nav
-            className="hidden gap-8 text-sm text-[var(--color-primary)] md:flex"
+            className="flex shrink-0 items-center gap-4 text-xs font-medium text-[var(--color-primary)] sm:text-sm md:gap-8"
             aria-label="Primary"
           >
             {isAbout ? <a href="../">Home</a> : null}
