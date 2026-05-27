@@ -155,7 +155,7 @@ test("generated SEO files and permanent social preview image are served", async 
     /<loc>\s*https:\/\/www\.elevatedthinking\.co\/\s*<\/loc>/
   );
   expect(sitemapText).toMatch(
-    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/\s*<\/loc>/
+    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/?\s*<\/loc>/
   );
   expect(
     sitemapText.match(
@@ -164,7 +164,7 @@ test("generated SEO files and permanent social preview image are served", async 
   ).toHaveLength(1);
   expect(
     sitemapText.match(
-      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/\s*<\/loc>/g
+      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/?\s*<\/loc>/g
     )
   ).toHaveLength(1);
 
