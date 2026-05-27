@@ -42,6 +42,7 @@ test("mobile header exposes about navigation", async ({ page }) => {
   const aboutLink = page.getByRole("link", { name: /^about$/i });
   await expect(aboutLink).toBeVisible();
   await expect(aboutLink).toHaveAttribute("href", "./about/");
+  await expect(page.getByRole("link", { name: /^home$/i })).toHaveCount(0);
 });
 
 test("about page smoke", async ({ page }) => {
@@ -60,10 +61,8 @@ test("about page smoke", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /what we do/i })
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: /^home$/i })).toHaveAttribute(
-    "href",
-    "../"
-  );
+  await expect(page.getByRole("link", { name: /^home$/i })).toHaveCount(0);
+  await expect(page.getByLabel("Elevated home")).toHaveAttribute("href", "../");
   await expect(page.getByRole("link", { name: /^about$/i })).toHaveAttribute(
     "aria-current",
     "page"

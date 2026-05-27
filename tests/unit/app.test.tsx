@@ -55,6 +55,9 @@ describe("App", () => {
       "href",
       "#contact"
     );
+    expect(
+      screen.queryByRole("link", { name: /^home$/i })
+    ).not.toBeInTheDocument();
 
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
 
@@ -196,7 +199,10 @@ describe("App", () => {
         name: /built by product and systems leaders/i,
       })
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^home$/i })).toHaveAttribute(
+    expect(
+      screen.queryByRole("link", { name: /^home$/i })
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
       "href",
       "../"
     );

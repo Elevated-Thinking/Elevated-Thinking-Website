@@ -45,7 +45,6 @@ export function SiteLayout({
             className="flex shrink-0 items-center gap-4 text-xs font-medium text-[var(--color-primary)] sm:text-sm md:gap-8"
             aria-label="Primary"
           >
-            {isAbout ? <a href="../">Home</a> : null}
             <a
               href={isAbout ? "./" : "./about/"}
               aria-current={isAbout ? "page" : undefined}
