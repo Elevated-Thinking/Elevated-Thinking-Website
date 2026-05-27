@@ -73,9 +73,7 @@ const balancePoints = [
 function AboutHeroVisual() {
   return (
     <div
-      className="about-hero-visual reveal-image"
-      data-reveal="image"
-      data-reveal-direction="right"
+      className="about-hero-visual"
       aria-label="Connected workflow diagram linking people, systems, and outcomes"
     >
       <div className="about-hero-grid" aria-hidden="true" />
@@ -123,7 +121,7 @@ function AboutHeroVisual() {
 
 function WhyVisual() {
   return (
-    <div className="why-visual reveal-image" data-reveal="image">
+    <div className="why-visual">
       <article>
         <span>P</span>
         <strong>People</strong>
@@ -151,9 +149,7 @@ function WhyVisual() {
 function CapabilityVisual() {
   return (
     <div
-      className="capability-visual reveal-image"
-      data-reveal="image"
-      data-reveal-direction="left"
+      className="capability-visual"
       aria-label="Product ecosystem, workflow orchestration, and research synthesis"
     >
       <div className="capability-photo">
@@ -315,13 +311,7 @@ export function AboutPage() {
       </section>
 
       <section className="about-section team-section">
-        <div
-          className="team-image reveal-image image-frame"
-          data-parallax
-          data-parallax-speed="24"
-          data-reveal="image"
-          data-reveal-direction="left"
-        >
+        <div className="team-image image-frame">
           <ResponsiveImage
             image={uxResearchImage}
             sizes="(min-width: 1024px) 38vw, 100vw"
