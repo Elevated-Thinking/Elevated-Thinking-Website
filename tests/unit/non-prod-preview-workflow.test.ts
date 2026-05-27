@@ -6,6 +6,10 @@ describe("non-prod preview workflow", () => {
     join(process.cwd(), ".github/workflows/non-prod-preview.yml"),
     "utf8"
   );
+  const previewDeploymentScript = readFileSync(
+    join(process.cwd(), "scripts/build-preview-deployment.mjs"),
+    "utf8"
+  );
 
   it("comments once with the PR preview URL after a successful PR deployment", () => {
     expect(workflow).toContain("issues: write");
@@ -19,5 +23,15 @@ describe("non-prod preview workflow", () => {
     );
     expect(workflow).toContain("github.rest.issues.listComments");
     expect(workflow).toContain("github.rest.issues.createComment");
+  });
+
+  it("rewrites preview share metadata to deployed preview URLs", () => {
+    expect(workflow).toContain("MAIN_PREVIEW_BASE_URL");
+    expect(workflow).toContain(
+      "PULL_REQUEST_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/"
+    );
+    expect(previewDeploymentScript).toContain("rewritePreviewMetadata");
+    expect(previewDeploymentScript).toContain("mainPreviewBaseUrl");
+    expect(previewDeploymentScript).toContain("pullRequestPreviewBaseUrl");
   });
 });
