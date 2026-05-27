@@ -35,6 +35,35 @@ test("app smoke", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("about page smoke", async ({ page }) => {
+  await page.goto("/about/");
+
+  await expect(
+    page.getByRole("heading", {
+      name: /where experience, systems, and outcomes are elevated together\./i,
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /why organizations partner with elevated/i,
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /what we do/i })
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /^home$/i })).toHaveAttribute(
+    "href",
+    "../"
+  );
+  await expect(page.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+  await expect(
+    page.getByRole("link", { name: /start a conversation/i }).first()
+  ).toHaveAttribute("href", calendarUrl);
+});
+
 test("app exposes favicon assets", async ({ page }) => {
   await page.goto("/");
 
@@ -125,9 +154,17 @@ test("generated SEO files and permanent social preview image are served", async 
   expect(sitemapText).toMatch(
     /<loc>\s*https:\/\/www\.elevatedthinking\.co\/\s*<\/loc>/
   );
+  expect(sitemapText).toMatch(
+    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/\s*<\/loc>/
+  );
   expect(
     sitemapText.match(
       /<loc>\s*https:\/\/www\.elevatedthinking\.co\/\s*<\/loc>/g
+    )
+  ).toHaveLength(1);
+  expect(
+    sitemapText.match(
+      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/\s*<\/loc>/g
     )
   ).toHaveLength(1);
 

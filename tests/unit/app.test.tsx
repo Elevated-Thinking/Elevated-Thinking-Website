@@ -5,6 +5,10 @@ import App from "../../src/App";
 const calendarUrl = "https://calendar.app.google/ShyxHfNAutZC3Dg7A";
 
 describe("App", () => {
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
   it("renders the hero heading", () => {
     render(<App />);
 
@@ -43,6 +47,10 @@ describe("App", () => {
     expect(
       screen.getByRole("navigation", { name: /primary/i })
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "./about/"
+    );
     expect(screen.getByRole("link", { name: /^contact$/i })).toHaveAttribute(
       "href",
       "#contact"
@@ -158,6 +166,43 @@ describe("App", () => {
     expect(footer?.querySelector("address")).toHaveClass(
       "lg:row-start-2",
       "lg:justify-self-end"
+    );
+  });
+
+  it("renders the about page from the dedicated about path", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    render(<App />);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: /where experience, systems, and outcomes are elevated together\./i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/design-led\. outcome-focused\. human-aware\./i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /why organizations partner with elevated/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /what we do/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /built by product and systems leaders/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^home$/i })).toHaveAttribute(
+      "href",
+      "../"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "aria-current",
+      "page"
     );
   });
 });
