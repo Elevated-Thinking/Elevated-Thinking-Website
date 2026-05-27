@@ -1,6 +1,5 @@
 import {
   aiDeliveryImage,
-  heroImage,
   productStrategyImage,
   serviceWorkflowImage,
   uxResearchImage,
