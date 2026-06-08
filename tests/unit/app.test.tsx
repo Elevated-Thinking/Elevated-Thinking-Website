@@ -211,4 +211,52 @@ describe("App", () => {
       "page"
     );
   });
+
+  it("renders the requested about page why visual labels", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    render(<App />);
+
+    for (const [badge, title, detail] of [
+      ["P", "People", "Needs, behavior, adoption"],
+      ["D", "Product", "Roadmaps, interfaces, services"],
+      ["T", "Technology", "AI, platforms, data, delivery"],
+      ["M", "Mission / Business", "Governance, risk, outcomes"],
+    ]) {
+      expect(screen.getByText(badge)).toBeInTheDocument();
+      expect(
+        screen.getByText(title, { selector: ".why-visual strong" })
+      ).toBeInTheDocument();
+      expect(screen.getByText(detail)).toBeInTheDocument();
+    }
+  });
+
+  it("updates the about hero visual without the center outcomes card", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    const { container } = render(<App />);
+
+    expect(
+      screen.getByLabelText(
+        /connected workflow diagram linking people, systems, and experience/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Experience", { selector: ".about-node" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/elevated outcomes/i)).not.toBeInTheDocument();
+    expect(container.querySelector(".about-outcome-mark")).toBeNull();
+  });
+
+  it("keeps numbered capability badges until icons are supplied", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    const { container } = render(<App />);
+
+    expect(
+      Array.from(container.querySelectorAll(".capability-card span")).map(
+        (badge) => badge.textContent
+      )
+    ).toEqual(["01", "02", "03", "04", "05", "06"]);
+  });
 });

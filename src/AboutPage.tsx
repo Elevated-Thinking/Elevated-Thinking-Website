@@ -74,7 +74,7 @@ function AboutHeroVisual() {
   return (
     <div
       className="about-hero-visual"
-      aria-label="Connected workflow diagram linking people, systems, and outcomes"
+      aria-label="Connected workflow diagram linking people, systems, and experience"
     >
       <div className="about-hero-grid" aria-hidden="true" />
       <div
@@ -100,18 +100,14 @@ function AboutHeroVisual() {
         viewBox="0 0 520 460"
         aria-hidden="true"
       >
-        <path d="M88 292 248 178 422 248" />
-        <path d="M132 126 248 178 382 82" />
-        <path d="M248 178 274 344" />
-        <path d="M88 292 274 344 422 248" />
+        <path d="M92 300 398 82" />
+        <path d="M92 300 420 250" />
+        <path d="M398 82 420 250" />
+        <path d="M126 130 420 250 282 354 92 300" />
       </svg>
       <div className="about-node about-node-people">People</div>
       <div className="about-node about-node-systems">Systems</div>
-      <div className="about-node about-node-outcomes">Outcomes</div>
-      <div className="about-outcome-mark" aria-hidden="true">
-        <span>Elevated</span>
-        <strong>Outcomes</strong>
-      </div>
+      <div className="about-node about-node-experience">Experience</div>
       <div className="about-callout-card">
         Design-led. Outcome-focused. Human-aware.
       </div>

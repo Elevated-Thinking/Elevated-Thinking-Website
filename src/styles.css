@@ -234,37 +234,9 @@ button {
   top: 14%;
 }
 
-.about-node-outcomes {
-  right: 18%;
+.about-node-experience {
+  right: 11%;
   top: 48%;
-}
-
-.about-outcome-mark {
-  align-items: center;
-  background: rgb(248 248 246 / 0.9);
-  border: 1px solid rgb(55 81 78 / 0.12);
-  border-radius: 0.75rem;
-  box-shadow: 0 1rem 2rem rgb(47 47 47 / 0.12);
-  color: var(--color-primary);
-  display: grid;
-  gap: 0.1rem;
-  left: 41%;
-  min-width: 9rem;
-  padding: 1rem;
-  position: absolute;
-  text-align: center;
-  top: 38%;
-}
-
-.about-outcome-mark span {
-  color: var(--color-accent);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.about-outcome-mark strong {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.25rem;
 }
 
 .about-callout-card {
@@ -340,8 +312,10 @@ button {
 
 .why-visual {
   display: grid;
-  gap: 1rem;
+  gap: clamp(1.3rem, 3vw, 2rem);
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: clamp(35rem, 48vw, 46rem);
+  padding: clamp(1rem, 2.4vw, 1.8rem);
   position: relative;
 }
 
@@ -349,62 +323,66 @@ button {
   background:
     linear-gradient(
       90deg,
-      transparent 49%,
-      rgb(193 74 17 / 0.32) 50%,
-      transparent 51%
+      transparent calc(50% - 0.28rem),
+      rgb(193 74 17 / 0.22) 50%,
+      transparent calc(50% + 0.28rem)
     ),
     linear-gradient(
       0deg,
-      transparent 49%,
-      rgb(193 74 17 / 0.32) 50%,
-      transparent 51%
+      transparent calc(50% - 0.28rem),
+      rgb(193 74 17 / 0.22) 50%,
+      transparent calc(50% + 0.28rem)
     );
   content: "";
-  inset: 8% 10%;
+  filter: blur(0.7rem);
+  inset: 16% 9% 19%;
   position: absolute;
 }
 
 .why-visual article {
-  background: rgb(248 248 246 / 0.92);
-  border: 1px solid rgb(55 81 78 / 0.14);
+  align-content: start;
+  background: rgb(255 255 255 / 0.78);
+  border: 1px solid rgb(55 81 78 / 0.13);
   border-radius: 0.75rem;
-  box-shadow: 0 1.25rem 2.5rem rgb(47 47 47 / 0.1);
-  min-height: 12rem;
-  padding: 1.35rem;
+  box-shadow: 0 1.8rem 3.4rem rgb(47 47 47 / 0.09);
+  display: grid;
+  min-height: clamp(14.5rem, 20vw, 17.5rem);
+  padding: clamp(1.45rem, 3.4vw, 2.65rem);
   position: relative;
+  z-index: 1;
 }
 
 .why-visual article:nth-child(2),
-.why-visual article:nth-child(3) {
-  transform: translateY(2rem);
+.why-visual article:nth-child(4) {
+  transform: translateY(clamp(2.6rem, 5vw, 4.4rem));
 }
 
-.why-visual span,
-.capability-card span {
+.why-visual span {
   align-items: center;
   background: var(--color-surface);
   border-radius: 999px;
   color: var(--color-primary);
   display: inline-flex;
-  font-size: 0.8rem;
+  font-size: clamp(0.82rem, 1.1vw, 1rem);
   font-weight: 800;
-  height: 2rem;
+  height: clamp(2.2rem, 3.7vw, 3.2rem);
   justify-content: center;
-  margin-bottom: 1rem;
-  width: 2rem;
+  margin-bottom: clamp(1.4rem, 2.8vw, 2.2rem);
+  width: clamp(2.2rem, 3.7vw, 3.2rem);
 }
 
 .why-visual strong {
   color: var(--color-primary);
   display: block;
-  font-size: 1.1rem;
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  line-height: 1.1;
 }
 
 .why-visual p {
-  color: rgb(55 81 78 / 0.72);
-  font-size: 0.92rem;
-  line-height: 1.45;
-  margin: 0.55rem 0 0;
+  color: rgb(55 81 78 / 0.74);
+  font-size: clamp(1rem, 1.55vw, 1.5rem);
+  line-height: 1.35;
+  margin: clamp(0.8rem, 1.8vw, 1.25rem) 0 0;
 }
 
 .capabilities-section {
@@ -494,6 +472,20 @@ button {
   padding: 1.35rem;
 }
 
+.capability-card span {
+  align-items: center;
+  background: var(--color-surface);
+  border-radius: 999px;
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 800;
+  height: 2rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+  width: 2rem;
+}
+
 .capability-card:nth-child(3),
 .capability-card:nth-child(6) {
   grid-column: span 2;
@@ -514,13 +506,7 @@ button {
 }
 
 .thinking-section {
-  background:
-    radial-gradient(
-      circle at 80% 20%,
-      rgb(193 74 17 / 0.24),
-      transparent 26rem
-    ),
-    var(--color-primary);
+  background: var(--color-primary);
   color: white;
   margin-top: 1rem;
   padding: clamp(4rem, 8vw, 7rem) 1.5rem;
@@ -562,13 +548,13 @@ button {
 
 .experience-band {
   background: var(--color-surface);
-  border-radius: 999px;
+  border-radius: 1.75rem;
   display: grid;
-  gap: 0.25rem;
+  gap: clamp(1rem, 2.2vw, 2rem);
   grid-template-columns: repeat(4, minmax(0, 1fr));
   list-style: none;
   margin: 0;
-  padding: 1.25rem;
+  padding: clamp(2rem, 3.4vw, 3rem);
 }
 
 .experience-band li {
@@ -623,6 +609,16 @@ button {
   font-size: clamp(1.05rem, 1.7vw, 1.35rem);
   font-weight: 700;
   padding: 1rem 0;
+  transition:
+    border-color 220ms ease,
+    color 220ms ease,
+    transform 220ms ease;
+}
+
+.environment-list li:hover {
+  border-color: rgb(193 74 17 / 0.42);
+  color: var(--color-accent);
+  transform: translateY(-0.25rem);
 }
 
 .team-section {
@@ -826,11 +822,8 @@ button {
   }
 
   .about-hero-visual {
-    min-height: 24rem;
-  }
-
-  .about-outcome-mark {
-    left: 34%;
+    min-height: 0;
+    width: 100%;
   }
 
   .about-callout-card {
@@ -844,12 +837,17 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .why-visual {
+    min-height: auto;
+    padding: 0;
+  }
+
   .why-visual::before {
     display: none;
   }
 
   .why-visual article:nth-child(2),
-  .why-visual article:nth-child(3) {
+  .why-visual article:nth-child(4) {
     transform: none;
   }
 

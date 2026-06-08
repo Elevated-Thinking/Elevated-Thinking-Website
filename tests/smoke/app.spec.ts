@@ -72,6 +72,146 @@ test("about page smoke", async ({ page }) => {
   ).toHaveAttribute("href", calendarUrl);
 });
 
+test("about hero visual removes the center outcomes card", async ({ page }) => {
+  await page.goto("/about/");
+
+  const heroVisual = page.getByLabel(
+    /connected workflow diagram linking people, systems, and experience/i
+  );
+  await expect(heroVisual).toBeVisible();
+  await expect(page.locator(".about-outcome-mark")).toHaveCount(0);
+  await expect(
+    page.locator(".about-node", { hasText: "Experience" })
+  ).toBeVisible();
+  await expect(
+    page.locator(".about-node", { hasText: "Outcomes" })
+  ).toHaveCount(0);
+});
+
+test("about page why visual matches desktop card composition", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/about/");
+
+  const visual = page.locator(".why-visual");
+  const people = visual.locator("article", { hasText: "People" });
+  const product = visual.locator("article", { hasText: "Product" });
+  const technology = visual.locator("article", { hasText: "Technology" });
+  const mission = visual.locator("article", { hasText: "Mission / Business" });
+
+  await expect(visual).toBeVisible();
+  await expect(people).toBeVisible();
+  await expect(product).toBeVisible();
+  await expect(technology).toBeVisible();
+  await expect(mission).toBeVisible();
+
+  const [peopleBox, productBox, technologyBox, missionBox] = await Promise.all([
+    people.boundingBox(),
+    product.boundingBox(),
+    technology.boundingBox(),
+    mission.boundingBox(),
+  ]);
+
+  expect(peopleBox).not.toBeNull();
+  expect(productBox).not.toBeNull();
+  expect(technologyBox).not.toBeNull();
+  expect(missionBox).not.toBeNull();
+
+  expect(peopleBox!.height).toBeGreaterThan(230);
+  expect(productBox!.x).toBeGreaterThan(peopleBox!.x + peopleBox!.width * 0.65);
+  expect(missionBox!.x).toBeGreaterThan(
+    technologyBox!.x + technologyBox!.width * 0.65
+  );
+  expect(technologyBox!.y).toBeGreaterThan(peopleBox!.y + peopleBox!.height);
+  expect(missionBox!.y).toBeGreaterThan(productBox!.y + productBox!.height);
+  expect(productBox!.y).toBeGreaterThan(peopleBox!.y + 40);
+  expect(missionBox!.y).toBeGreaterThan(technologyBox!.y);
+});
+
+test("about page why visual and experience band stack cleanly on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/about/");
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }))
+    )
+    .toEqual({ clientWidth: 390, scrollWidth: 390 });
+
+  for (const selector of [".why-visual article", ".experience-band li"]) {
+    const items = page.locator(selector);
+    const count = await items.count();
+    expect(count).toBeGreaterThan(1);
+
+    const boxes = await items.evaluateAll((elements) =>
+      elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return {
+          height: box.height,
+          width: box.width,
+          x: box.x,
+          y: box.y,
+        };
+      })
+    );
+
+    for (let index = 1; index < boxes.length; index += 1) {
+      expect(boxes[index].y).toBeGreaterThan(
+        boxes[index - 1].y + boxes[index - 1].height - 1
+      );
+      expect(Math.abs(boxes[index].x - boxes[0].x)).toBeLessThan(2);
+      expect(Math.abs(boxes[index].width - boxes[0].width)).toBeLessThan(2);
+    }
+  }
+});
+
+test("about page relevant experience band is less pill-shaped on desktop", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/about/");
+
+  const band = page.locator(".experience-band");
+  await expect(band).toBeVisible();
+
+  const styles = await band.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      borderRadius: Number.parseFloat(style.borderTopLeftRadius),
+      paddingLeft: Number.parseFloat(style.paddingLeft),
+      width: element.getBoundingClientRect().width,
+    };
+  });
+
+  expect(styles.borderRadius).toBeLessThanOrEqual(32);
+  expect(styles.paddingLeft).toBeGreaterThanOrEqual(32);
+  expect(styles.width).toBeLessThanOrEqual(1280);
+});
+
+test("about page environment rows have a subtle hover treatment", async ({
+  page,
+}) => {
+  await page.goto("/about/");
+
+  const item = page.locator(".environment-list li", {
+    hasText: "Government & defense",
+  });
+  await expect(item).toBeVisible();
+
+  await item.hover();
+
+  await expect(item).toHaveCSS("color", "rgb(193, 74, 17)");
+  await expect
+    .poll(() => item.evaluate((element) => getComputedStyle(element).transform))
+    .not.toBe("none");
+});
+
 test("app exposes favicon assets", async ({ page }) => {
   await page.goto("/");
 
