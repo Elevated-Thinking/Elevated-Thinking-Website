@@ -3,6 +3,7 @@ import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { buildPreviewIndexHtml } from "./preview-index.mjs";
+import { rewritePreviewMetadata } from "./preview-metadata.mjs";
 
 const assertCi = () => {
   if (
@@ -41,6 +42,9 @@ const normalizePathBase = (value) => {
     : `${withLeadingSlash}/`;
 };
 
+const ensureTrailingSlash = (value) =>
+  value.endsWith("/") ? value : `${value}/`;
+
 const uniquePullRequests = (pullRequests) => {
   const seen = new Set();
 
@@ -64,6 +68,7 @@ const openPullRequests = uniquePullRequests(
 );
 const mainBranch = process.env.MAIN_BRANCH ?? "main";
 const mainPreviewUrl = process.env.MAIN_PREVIEW_URL ?? "/preview/";
+const mainPreviewBaseUrl = process.env.MAIN_PREVIEW_BASE_URL ?? "";
 const prPreviewPathBase = normalizePathBase(
   process.env.PR_PREVIEW_PATH_BASE ?? "/preview/pr/"
 );
@@ -85,6 +90,10 @@ await run("npm", [
   "--outDir=dist/preview",
   "--emptyOutDir=false",
 ]);
+await rewritePreviewMetadata({
+  outDir: "dist/preview",
+  previewBaseUrl: mainPreviewBaseUrl,
+});
 await copyFile(
   "public/staticwebapp.config.json",
   "dist/staticwebapp.config.json"
@@ -111,6 +120,10 @@ for (const pullRequest of openPullRequests) {
     `--outDir=${outDir}`,
     "--emptyOutDir=false",
   ]);
+  await rewritePreviewMetadata({
+    outDir,
+    previewBaseUrl: `${ensureTrailingSlash(pullRequestPreviewBaseUrl)}${pullRequest.number}/`,
+  });
   await rm(`${outDir}/staticwebapp.config.json`, { force: true });
 }
 

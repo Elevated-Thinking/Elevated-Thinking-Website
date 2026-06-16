@@ -5,6 +5,10 @@ import App from "../../src/App";
 const calendarUrl = "https://calendar.app.google/ShyxHfNAutZC3Dg7A";
 
 describe("App", () => {
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
   it("renders the hero heading", () => {
     render(<App />);
 
@@ -43,10 +47,17 @@ describe("App", () => {
     expect(
       screen.getByRole("navigation", { name: /primary/i })
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "./about/"
+    );
     expect(screen.getByRole("link", { name: /^contact$/i })).toHaveAttribute(
       "href",
       "#contact"
     );
+    expect(
+      screen.queryByRole("link", { name: /^home$/i })
+    ).not.toBeInTheDocument();
 
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
 
@@ -159,5 +170,93 @@ describe("App", () => {
       "lg:row-start-2",
       "lg:justify-self-end"
     );
+  });
+
+  it("renders the about page from the dedicated about path", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    render(<App />);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: /where experience, systems, and outcomes are elevated together\./i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/design-led\. outcome-focused\. human-aware\./i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /why organizations partner with elevated/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /what we do/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /built by product and systems leaders/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^home$/i })
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
+      "href",
+      "../"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+  });
+
+  it("renders the requested about page why visual labels", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    render(<App />);
+
+    for (const [badge, title, detail] of [
+      ["P", "People", "Needs, behavior, adoption"],
+      ["D", "Product", "Roadmaps, interfaces, services"],
+      ["T", "Technology", "AI, platforms, data, delivery"],
+      ["M", "Mission / Business", "Governance, risk, outcomes"],
+    ]) {
+      expect(screen.getByText(badge)).toBeInTheDocument();
+      expect(
+        screen.getByText(title, { selector: ".why-visual strong" })
+      ).toBeInTheDocument();
+      expect(screen.getByText(detail)).toBeInTheDocument();
+    }
+  });
+
+  it("updates the about hero visual without the center outcomes card", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    const { container } = render(<App />);
+
+    expect(
+      screen.getByLabelText(
+        /connected workflow diagram linking people, systems, and experience/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Experience", { selector: ".about-node" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/elevated outcomes/i)).not.toBeInTheDocument();
+    expect(container.querySelector(".about-outcome-mark")).toBeNull();
+  });
+
+  it("keeps numbered capability badges until icons are supplied", () => {
+    window.history.replaceState({}, "", "/about/");
+
+    const { container } = render(<App />);
+
+    expect(
+      Array.from(container.querySelectorAll(".capability-card span")).map(
+        (badge) => badge.textContent
+      )
+    ).toEqual(["01", "02", "03", "04", "05", "06"]);
   });
 });

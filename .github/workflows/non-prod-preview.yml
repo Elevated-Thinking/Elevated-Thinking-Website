@@ -208,6 +208,7 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           MAIN_BRANCH: main
+          MAIN_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/
           MAIN_PREVIEW_URL: /preview/
           OPEN_PRS_JSON: ${{ steps.open_pull_requests.outputs.result }}
           PR_PREVIEW_PATH_BASE: /preview/pr/
@@ -311,6 +312,7 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           MAIN_BRANCH: main
+          MAIN_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/
           MAIN_PREVIEW_URL: /preview/
           OPEN_PRS_JSON: ${{ steps.open_pull_requests.outputs.result }}
           PR_PREVIEW_PATH_BASE: /preview/pr/
