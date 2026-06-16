@@ -29,7 +29,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
 
@@ -55,7 +55,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
 
@@ -120,7 +120,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
 
@@ -169,7 +169,7 @@ jobs:
       url: ${{ github.event_name == 'pull_request' && format('https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/{0}/', github.event.pull_request.number) || 'https://delightful-plant-05da2520f.7.azurestaticapps.net/' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           persist-credentials: true
 
@@ -272,7 +272,7 @@ jobs:
       url: https://delightful-plant-05da2520f.7.azurestaticapps.net/
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           persist-credentials: true
           ref: main
