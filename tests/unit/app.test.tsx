@@ -51,6 +51,10 @@ describe("App", () => {
       "href",
       "/about/"
     );
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "href",
+      "/polaris/"
+    );
     expect(screen.getByRole("link", { name: /^contact$/i })).toHaveAttribute(
       "href",
       "#contact"
@@ -234,6 +238,10 @@ describe("App", () => {
     expect(
       screen.getByRole("link", { name: /explore our capabilities/i })
     ).toHaveAttribute("href", "/about/#capabilities");
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
     expect(
       screen.getAllByRole("link", {
         name: /talk with elevated|start a conversation/i,
@@ -255,6 +263,28 @@ describe("App", () => {
       "href",
       "/about/"
     );
+  });
+
+  it("keeps shared navigation within an Azure PR preview", () => {
+    window.history.replaceState({}, "", "/preview/pr/43/polaris/");
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
+      "href",
+      "/preview/pr/43/"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "/preview/pr/43/about/"
+    );
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "href",
+      "/preview/pr/43/polaris/"
+    );
+    expect(
+      screen.getByRole("link", { name: /explore our capabilities/i })
+    ).toHaveAttribute("href", "/preview/pr/43/about/#capabilities");
   });
 
   it("renders the requested about page why visual labels", () => {

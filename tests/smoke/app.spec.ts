@@ -42,6 +42,10 @@ test("mobile header exposes about navigation", async ({ page }) => {
   const aboutLink = page.getByRole("link", { name: /^about$/i });
   await expect(aboutLink).toBeVisible();
   await expect(aboutLink).toHaveAttribute("href", "/about/");
+  await expect(page.getByRole("link", { name: "Polaris" })).toHaveAttribute(
+    "href",
+    "/polaris/"
+  );
   await expect(page.getByRole("link", { name: /^home$/i })).toHaveCount(0);
 });
 

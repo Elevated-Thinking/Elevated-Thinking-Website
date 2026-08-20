@@ -1,5 +1,6 @@
 import { polarisHeroImage } from "./imageAssets";
 import { ResponsiveImage } from "./ResponsiveImage";
+import { siteUrl } from "./SiteLayout";
 import { calendarUrl, footerEmail } from "./siteConfig";
 
 const editorialColumns = [
@@ -48,7 +49,9 @@ export function PolarisPage() {
             <a href={calendarUrl} rel="noreferrer" target="_blank">
               Talk with Elevated
             </a>
-            <a href="/about/#capabilities">Explore our capabilities</a>
+            <a href={siteUrl("about/#capabilities")}>
+              Explore our capabilities
+            </a>
           </div>
         </div>
         <div
