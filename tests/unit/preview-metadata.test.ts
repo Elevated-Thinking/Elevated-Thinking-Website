@@ -16,6 +16,7 @@ describe("preview metadata", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "elevated-preview-metadata-"));
     mkdirSync(join(tempDir, "about"), { recursive: true });
+    mkdirSync(join(tempDir, "polaris"), { recursive: true });
   });
 
   afterEach(() => {
@@ -35,6 +36,13 @@ describe("preview metadata", () => {
       [
         '<link rel="canonical" href="https://www.elevatedthinking.co/about/" />',
         '<meta property="og:url" content="https://www.elevatedthinking.co/about/" />',
+      ].join("\n")
+    );
+    writeFileSync(
+      join(tempDir, "polaris", "index.html"),
+      [
+        '<link rel="canonical" href="https://www.elevatedthinking.co/polaris/" />',
+        '<meta property="og:url" content="https://www.elevatedthinking.co/polaris/" />',
       ].join("\n")
     );
 
@@ -59,6 +67,11 @@ describe("preview metadata", () => {
       readFileSync(join(tempDir, "about", "index.html"), "utf8")
     ).toContain(
       'content="https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/28/about/"'
+    );
+    expect(
+      readFileSync(join(tempDir, "polaris", "index.html"), "utf8")
+    ).toContain(
+      'href="https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/28/polaris/"'
     );
   });
 });

@@ -41,7 +41,7 @@ test("mobile header exposes about navigation", async ({ page }) => {
 
   const aboutLink = page.getByRole("link", { name: /^about$/i });
   await expect(aboutLink).toBeVisible();
-  await expect(aboutLink).toHaveAttribute("href", "./about/");
+  await expect(aboutLink).toHaveAttribute("href", "/about/");
   await expect(page.getByRole("link", { name: /^home$/i })).toHaveCount(0);
 });
 
@@ -62,7 +62,7 @@ test("about page smoke", async ({ page }) => {
     page.getByRole("heading", { name: /what we do/i })
   ).toBeVisible();
   await expect(page.getByRole("link", { name: /^home$/i })).toHaveCount(0);
-  await expect(page.getByLabel("Elevated home")).toHaveAttribute("href", "../");
+  await expect(page.getByLabel("Elevated home")).toHaveAttribute("href", "/");
   await expect(page.getByRole("link", { name: /^about$/i })).toHaveAttribute(
     "aria-current",
     "page"
@@ -70,6 +70,31 @@ test("about page smoke", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: /start a conversation/i }).first()
   ).toHaveAttribute("href", calendarUrl);
+});
+
+test("Polaris case study loads with its case-study actions", async ({
+  page,
+}) => {
+  await page.goto("/polaris/");
+
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: /polaris brings clarity to complex mission work\./i,
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /one connected practice, from insight to delivery\./i,
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /talk with elevated/i })
+  ).toHaveAttribute("href", calendarUrl);
+  await expect(
+    page.getByRole("link", { name: /explore our capabilities/i })
+  ).toHaveAttribute("href", "/about/#capabilities");
+  await expect(page.getByLabel("Elevated home")).toHaveAttribute("href", "/");
 });
 
 test("about hero visual removes the center outcomes card", async ({ page }) => {
@@ -305,9 +330,17 @@ test("generated SEO files and permanent social preview image are served", async 
   expect(sitemapText).toMatch(
     /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/?\s*<\/loc>/
   );
+  expect(sitemapText).toMatch(
+    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/polaris\/?\s*<\/loc>/
+  );
   expect(
     sitemapText.match(
       /<loc>\s*https:\/\/www\.elevatedthinking\.co\/\s*<\/loc>/g
+    )
+  ).toHaveLength(1);
+  expect(
+    sitemapText.match(
+      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/polaris\/?\s*<\/loc>/g
     )
   ).toHaveLength(1);
   expect(

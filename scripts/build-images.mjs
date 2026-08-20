@@ -35,6 +35,10 @@ const images = [
     slug: "ai-delivery",
     cropPosition: "center",
   },
+  {
+    slug: "polaris-hero",
+    cropPosition: "center",
+  },
 ];
 
 async function pathExists(path) {

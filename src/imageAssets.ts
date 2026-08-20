@@ -34,6 +34,18 @@ import productStrategy640Webp from "./assets/images/optimized/product-strategy-6
 import productStrategy960Avif from "./assets/images/optimized/product-strategy-960.avif";
 import productStrategy960Jpg from "./assets/images/optimized/product-strategy-960.jpg";
 import productStrategy960Webp from "./assets/images/optimized/product-strategy-960.webp";
+import polarisHero1280Avif from "./assets/images/optimized/polaris-hero-1280.avif";
+import polarisHero1280Jpg from "./assets/images/optimized/polaris-hero-1280.jpg";
+import polarisHero1280Webp from "./assets/images/optimized/polaris-hero-1280.webp";
+import polarisHero1600Avif from "./assets/images/optimized/polaris-hero-1600.avif";
+import polarisHero1600Jpg from "./assets/images/optimized/polaris-hero-1600.jpg";
+import polarisHero1600Webp from "./assets/images/optimized/polaris-hero-1600.webp";
+import polarisHero640Avif from "./assets/images/optimized/polaris-hero-640.avif";
+import polarisHero640Jpg from "./assets/images/optimized/polaris-hero-640.jpg";
+import polarisHero640Webp from "./assets/images/optimized/polaris-hero-640.webp";
+import polarisHero960Avif from "./assets/images/optimized/polaris-hero-960.avif";
+import polarisHero960Jpg from "./assets/images/optimized/polaris-hero-960.jpg";
+import polarisHero960Webp from "./assets/images/optimized/polaris-hero-960.webp";
 import serviceWorkflow1280Avif from "./assets/images/optimized/service-workflow-1280.avif";
 import serviceWorkflow1280Jpg from "./assets/images/optimized/service-workflow-1280.jpg";
 import serviceWorkflow1280Webp from "./assets/images/optimized/service-workflow-1280.webp";
@@ -132,6 +144,32 @@ export const productStrategyImage: ResponsiveImageAsset = {
       productStrategy960Jpg,
       productStrategy1280Jpg,
       productStrategy1600Jpg
+    ),
+  },
+};
+
+export const polarisHeroImage: ResponsiveImageAsset = {
+  ...dimensions,
+  alt: "Abstract mission systems visualization with layered information pathways",
+  position: "center",
+  sources: {
+    avif: variants(
+      polarisHero640Avif,
+      polarisHero960Avif,
+      polarisHero1280Avif,
+      polarisHero1600Avif
+    ),
+    webp: variants(
+      polarisHero640Webp,
+      polarisHero960Webp,
+      polarisHero1280Webp,
+      polarisHero1600Webp
+    ),
+    jpg: variants(
+      polarisHero640Jpg,
+      polarisHero960Jpg,
+      polarisHero1280Jpg,
+      polarisHero1600Jpg
     ),
   },
 };

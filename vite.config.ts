@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         main: resolve(rootDir, "index.html"),
         about: resolve(rootDir, "about/index.html"),
+        polaris: resolve(rootDir, "polaris/index.html"),
       },
     },
   },
