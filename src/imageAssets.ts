@@ -149,8 +149,9 @@ export const productStrategyImage: ResponsiveImageAsset = {
 };
 
 export const polarisHeroImage: ResponsiveImageAsset = {
-  ...dimensions,
-  alt: "Abstract mission systems visualization with layered information pathways",
+  width: 1600,
+  height: 900,
+  alt: "Three Polaris app screens showing a resources article, a task list for an upcoming move, and a mission onboarding page",
   position: "center",
   sources: {
     avif: variants(

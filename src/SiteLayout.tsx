@@ -7,7 +7,7 @@ type SitePage = "home" | "about" | "polaris";
 
 export const siteUrl = (path = "") => {
   const previewBase = window.location.pathname.match(
-    /^\/preview\/pr\/[^/]+\//
+    /^\/preview\/(?:pr\/[^/]+\/)?/
   )?.[0];
 
   return `${previewBase ?? "/"}${path.replace(/^\//, "")}`;

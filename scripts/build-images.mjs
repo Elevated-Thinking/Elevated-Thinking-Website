@@ -10,7 +10,7 @@ const sourceDir = join(rootDir, ".cache", "image-sources");
 const outputDir = join(rootDir, "src", "assets", "images", "optimized");
 
 const widths = [640, 960, 1280, 1600];
-const aspectRatio = 5 / 4;
+const defaultAspectRatio = 5 / 4;
 const totalBudgetBytes = 10 * 1024 * 1024;
 const assetBudgetBytes = 500 * 1024;
 
@@ -38,6 +38,7 @@ const images = [
   {
     slug: "polaris-hero",
     cropPosition: "center",
+    aspectRatio: 9 / 16,
   },
 ];
 
@@ -69,8 +70,15 @@ async function localSourcePath(image) {
   );
 }
 
-async function buildVariant({ sourcePath, slug, cropPosition, width, format }) {
-  const height = Math.round(width * aspectRatio);
+async function buildVariant({
+  sourcePath,
+  slug,
+  cropPosition,
+  aspectRatio,
+  width,
+  format,
+}) {
+  const height = Math.round(width * (aspectRatio ?? defaultAspectRatio));
   const outputPath = join(outputDir, `${slug}-${width}.${format.extension}`);
 
   let pipeline = sharp(sourcePath)
@@ -164,6 +172,7 @@ for (const image of images) {
       sourcePath,
       slug: image.slug,
       cropPosition: image.cropPosition,
+      aspectRatio: image.aspectRatio,
       width,
       format: { extension: "avif" },
     });
@@ -171,6 +180,7 @@ for (const image of images) {
       sourcePath,
       slug: image.slug,
       cropPosition: image.cropPosition,
+      aspectRatio: image.aspectRatio,
       width,
       format: { extension: "webp" },
     });
@@ -178,6 +188,7 @@ for (const image of images) {
       sourcePath,
       slug: image.slug,
       cropPosition: image.cropPosition,
+      aspectRatio: image.aspectRatio,
       width,
       format: { extension: "jpg" },
     });
