@@ -1,0 +1,144 @@
+name: Hostinger session
+description: >-
+  Validates Hostinger deployment inputs and prepares an SSH identity plus the
+  lftp connect program used by production deploy and rollback.
+
+inputs:
+  host:
+    description: Hostinger SSH/SFTP host
+    required: true
+  port:
+    description: Hostinger SSH/SFTP port
+    required: false
+    default: "22"
+  username:
+    description: Hostinger SSH/SFTP username
+    required: true
+  remote-path:
+    description: Production web root on the host
+    required: true
+  ssh-private-key:
+    description: Private key matching a public key registered in hPanel
+    required: true
+  known-hosts:
+    description: Output of `ssh-keyscan -p <port> <host>`; enables strict host key checking
+    required: false
+    default: ""
+
+outputs:
+  slots-root:
+    description: Absolute path of the blue/green slot directory on the host
+    value: ${{ steps.configure.outputs.slots-root }}
+  remote-path:
+    description: Normalized production web root
+    value: ${{ steps.configure.outputs.remote-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Hostinger session
+      id: configure
+      shell: bash
+      env:
+        HOSTINGER_HOST: ${{ inputs.host }}
+        HOSTINGER_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+        HOSTINGER_PORT: ${{ inputs.port }}
+        HOSTINGER_REMOTE_PATH: ${{ inputs.remote-path }}
+        HOSTINGER_SSH_PRIVATE_KEY: ${{ inputs.ssh-private-key }}
+        HOSTINGER_USERNAME: ${{ inputs.username }}
+      run: |
+        set -euo pipefail
+
+        # Fail before touching the network, with a message that names the gap.
+        missing=()
+        for required in HOSTINGER_HOST HOSTINGER_USERNAME HOSTINGER_REMOTE_PATH HOSTINGER_SSH_PRIVATE_KEY; do
+          if [ -z "${!required:-}" ]; then
+            missing+=("$required")
+          fi
+        done
+
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "::error::Missing required Hostinger secrets: ${missing[*]}"
+          exit 1
+        fi
+
+        port="${HOSTINGER_PORT:-22}"
+        remote_path="$HOSTINGER_REMOTE_PATH"
+        if [ "$remote_path" != "/" ]; then
+          remote_path="${remote_path%/}"
+        fi
+
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
+
+        ssh_key_path="$RUNNER_TEMP/hostinger_deploy_key"
+        printf '%s\n' "$HOSTINGER_SSH_PRIVATE_KEY" > "$ssh_key_path"
+        chmod 600 "$ssh_key_path"
+
+        if [ -n "$HOSTINGER_KNOWN_HOSTS" ]; then
+          printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          strict_host_key_checking="yes"
+        else
+          touch "$HOME/.ssh/known_hosts"
+          strict_host_key_checking="accept-new"
+          echo "::warning::HOSTINGER_KNOWN_HOSTS is not set; falling back to accept-new host key checking."
+        fi
+        chmod 644 "$HOME/.ssh/known_hosts"
+
+        connect_program="ssh -a -x -i $ssh_key_path -o BatchMode=yes -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=$strict_host_key_checking -o ConnectTimeout=20 -o ConnectionAttempts=2"
+
+        {
+          echo "HOSTINGER_ENDPOINT=sftp://$HOSTINGER_HOST:$port"
+          echo "HOSTINGER_LOGIN=$HOSTINGER_USERNAME"
+          echo "HOSTINGER_REMOTE_ROOT=$remote_path"
+          echo "HOSTINGER_SLOTS_ROOT=$remote_path/.deploy-slots"
+          echo "HOSTINGER_SSH_KEY_PATH=$ssh_key_path"
+          echo "LFTP_CONNECT_PROGRAM=$connect_program"
+        } >> "$GITHUB_ENV"
+
+        {
+          echo "remote-path=$remote_path"
+          echo "slots-root=$remote_path/.deploy-slots"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Install lftp
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        sudo apt-get install --yes lftp
+
+    # One wrapper so every transfer in every job uses identical timeout, retry
+    # and parallelism settings. Callers pipe only their lftp commands into it.
+    - name: Install lftp wrapper
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        wrapper="$RUNNER_TEMP/lftp-run"
+        cat > "$wrapper" <<'WRAPPER'
+        #!/usr/bin/env bash
+        set -euo pipefail
+        {
+          printf 'set sftp:connect-program "%s"\n' "$LFTP_CONNECT_PROGRAM"
+          echo "set sftp:auto-confirm yes"
+          echo "set net:max-retries 3"
+          echo "set net:reconnect-interval-base 5"
+          echo "set net:timeout 30"
+          echo "set mirror:parallel-transfer-count 4"
+          echo "set cmd:fail-exit yes"
+          cat
+          echo "bye"
+        } | lftp -u "$HOSTINGER_LOGIN","" "$HOSTINGER_ENDPOINT"
+        WRAPPER
+        chmod +x "$wrapper"
+        echo "LFTP_RUN=$wrapper" >> "$GITHUB_ENV"
+
+    - name: Verify connectivity
+      shell: bash
+      run: |
+        set -euo pipefail
+        "$LFTP_RUN" <<EOF
+        cd "$HOSTINGER_REMOTE_ROOT"
+        EOF
+        echo "Connected to $HOSTINGER_ENDPOINT and reached $HOSTINGER_REMOTE_ROOT."

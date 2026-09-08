@@ -1,240 +1,346 @@
 name: Non-Prod Preview Deploy
 
+# Azure Static Web Apps replaces the whole contents of an environment on every
+# deploy, and every preview lives on one authenticated host so reviewers only
+# need one `reviewer` role assignment. The site is therefore always published as
+# a single assembled tree: main at /preview/ and each eligible open pull request
+# at /preview/pr/<number>/.
+#
+# The expensive part used to be that assembling meant rebuilding every open pull
+# request on every event. Instead each target is built once per commit in its
+# own job, cached as an artifact keyed by SHA, and later runs reuse it. A normal
+# event now rebuilds exactly the one target that changed.
 on:
-  push:
-    branches:
-      - main
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
       - closed
+      - labeled
+      - unlabeled
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      cache_bust:
+        description: Rebuild every preview target instead of reusing cached builds
+        type: boolean
+        required: false
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: "20"
+  PREVIEW_ORIGIN: https://delightful-plant-05da2520f.7.azurestaticapps.net
+  MAIN_PREVIEW_PATH: /preview/
+  PR_PREVIEW_PATH_BASE: /preview/pr/
+  # Bump to invalidate every cached preview build, for example after changing
+  # how previews are built or where they are served from.
+  PREVIEW_CACHE_VERSION: v1
 
 permissions:
   contents: read
 
+# One assembler at a time for the whole repository. The deployed tree is the
+# complete state of every open pull request, so a queued run always supersedes
+# an older queued run, but an in-flight deploy is never interrupted.
 concurrency:
-  group: non-prod-preview-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref_name }}
-  cancel-in-progress: true
+  group: non-prod-preview
+  cancel-in-progress: false
 
 jobs:
-  validate:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+  plan:
+    name: Plan preview targets
+    # Fork pull requests cannot reach the deployment secret and their build
+    # output is untrusted, so the preview pipeline does not run for them at all.
+    # Checks still run for forks in the Checks workflow.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+      build_matrix: ${{ steps.plan.outputs.build_matrix }}
+      has_builds: ${{ steps.plan.outputs.has_builds }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
+      - name: Resolve preview targets
+        id: plan
+        env:
+          CACHE_BUST: ${{ inputs.cache_bust || 'false' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/heads/main" --jq '.sha')"
+
+          open_prs="$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '
+            [.[] | {
+              number,
+              title,
+              sha: .head.sha,
+              author: .user.login,
+              headRepository: (.head.repo.full_name // ""),
+              labels: [.labels[].name]
+            }]')"
+
+          plan="$(MAIN_SHA="$main_sha" OPEN_PRS_JSON="$open_prs" node scripts/plan-preview-targets.mjs)"
+
+          targets="$(jq -c '.targets' <<<"$plan")"
+          echo "$plan" | jq -r '.skipped[] | "Skipping PR #\(.number): \(.reason)"'
+
+          # A target is stale when no unexpired artifact exists for its SHA.
+          annotated='[]'
+          while read -r target; do
+            artifact="$(jq -r '.artifact' <<<"$target")"
+            cached=false
+
+            if [ "$CACHE_BUST" != "true" ]; then
+              found="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact&per_page=100" \
+                --jq '[.artifacts[] | select(.expired == false)] | length' || echo 0)"
+              if [ "$found" -gt 0 ]; then
+                cached=true
+              fi
+            fi
+
+            echo "$( [ "$cached" = true ] && echo 'reusing' || echo 'building' ) $artifact"
+            annotated="$(jq -c --argjson target "$target" --argjson cached "$cached" \
+              '. + [$target + {cached: $cached}]' <<<"$annotated")"
+          done < <(jq -c '.[]' <<<"$targets")
+
+          build_matrix="$(jq -c '[.[] | select(.cached | not)]' <<<"$annotated")"
+
+          {
+            echo "targets=$annotated"
+            echo "build_matrix=$build_matrix"
+            echo "has_builds=$( [ "$(jq 'length' <<<"$build_matrix")" -gt 0 ] && echo true || echo false )"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.target.id }}
+    needs: plan
+    if: needs.plan.outputs.has_builds == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      # One broken pull request must not take down everybody else's preview.
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.build_matrix) }}
+    steps:
+      - name: Check out ${{ matrix.target.ref }}
+        uses: actions/checkout@v7.0.1
         with:
-          node-version: 20
+          ref: ${{ matrix.target.ref }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Check formatting
-        run: npm run format:check
 
       - name: Check types
         run: npm run typecheck
 
-  unit_tests:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6.0.2
-        with:
-          persist-credentials: false
+      - name: Build preview target
+        env:
+          OUT_DIR: preview-out
+          PREVIEW_BASE: ${{ matrix.target.base }}
+          PREVIEW_URL: ${{ matrix.target.url }}
+        run: node scripts/build-preview-target.mjs
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run unit tests
-        run: >-
-          npm run test:unit -- --coverage
-          --coverageReporters=text-summary
-          --coverageReporters=lcov
-          --coverageReporters=json-summary
-
-      - name: Upload coverage artifact
-        if: ${{ !cancelled() }}
+      - name: Upload preview build
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: coverage-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
-          path: coverage/
-          if-no-files-found: ignore
-
-      - name: Publish coverage summary
-        if: ${{ !cancelled() }}
-        run: |
-          node <<'EOF'
-          const fs = require('node:fs');
-          const summaryPath = 'coverage/coverage-summary.json';
-
-          if (!fs.existsSync(summaryPath)) {
-            process.exit(0);
-          }
-
-          const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8')).total;
-          const rows = [
-            ['Statements', summary.statements.pct],
-            ['Branches', summary.branches.pct],
-            ['Functions', summary.functions.pct],
-            ['Lines', summary.lines.pct],
-          ];
-
-          const body = [
-            '## Unit Test Coverage',
-            '',
-            '| Metric | Coverage |',
-            '| --- | ---: |',
-            ...rows.map(([label, value]) => `| ${label} | ${value}% |`),
-          ].join('\n');
-
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${body}\n`);
-          EOF
-
-  smoke_tests:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browser dependencies
-        run: npx playwright install --with-deps chromium
-
-      - name: Run smoke tests
-        run: npm run test:smoke
-
-      - name: Upload Playwright report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: playwright-report-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
-          path: playwright-report/
-          if-no-files-found: ignore
+          name: ${{ matrix.target.artifact }}
+          path: preview-out
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
 
   deploy:
-    if: >-
-      github.event_name == 'push' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.action != 'closed' &&
-        github.event.pull_request.head.repo.full_name == github.repository
-      )
+    name: Assemble and deploy
     needs:
-      - validate
-      - unit_tests
-      - smoke_tests
+      - plan
+      - build
+    # Runs even when some targets failed to build; those targets are simply left
+    # out of the deployed tree rather than blocking every other preview.
+    if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+      actions: read
       issues: write
       pull-requests: write
     environment:
       name: non-prod-preview
-      url: ${{ github.event_name == 'pull_request' && format('https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/{0}/', github.event.pull_request.number) || 'https://delightful-plant-05da2520f.7.azurestaticapps.net/' }}
+      # Literal rather than env.PREVIEW_ORIGIN: the env context is not reliably
+      # available here, and an unresolved value would leave a broken link.
+      url: ${{ (github.event_name == 'pull_request' && github.event.action != 'closed') && format('https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/{0}/', github.event.pull_request.number) || 'https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/' }}
+    outputs:
+      targets: ${{ steps.collect.outputs.targets }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: 20
-          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Collect open pull requests
-        id: open_pull_requests
-        uses: actions/github-script@v9.0.0
-        with:
-          result-encoding: string
-          script: |
-            const pullRequests = await github.paginate(github.rest.pulls.list, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
-            });
-
-            return JSON.stringify(
-              pullRequests
-                .filter(
-                  (pullRequest) =>
-                    pullRequest.head.repo?.full_name === context.payload.repository.full_name
-                )
-                .map((pullRequest) => ({
-                  number: pullRequest.number,
-                  title: pullRequest.title,
-                }))
-            );
-
-      - name: Build path-based preview deployment
+      - name: Collect preview builds
+        id: collect
         env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          MAIN_BRANCH: main
-          MAIN_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/
-          MAIN_PREVIEW_URL: /preview/
-          OPEN_PRS_JSON: ${{ steps.open_pull_requests.outputs.result }}
-          PR_PREVIEW_PATH_BASE: /preview/pr/
-          PULL_REQUEST_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/
-        run: npm run build:preview-deployment
+          GH_TOKEN: ${{ github.token }}
+          TARGETS: ${{ needs.plan.outputs.targets }}
+        run: |
+          set -euo pipefail
 
-      - name: Verify Static Web Apps config
-        run: test -f dist/staticwebapp.config.json
+          mkdir -p dist
+          statuses="$(mktemp)"
+          echo '[]' > "$statuses"
+
+          while read -r target; do
+            id="$(jq -r '.id' <<<"$target")"
+            artifact="$(jq -r '.artifact' <<<"$target")"
+            out_path="$(jq -r '.outPath' <<<"$target")"
+            status=missing
+
+            # A lookup blip must degrade to "this one target is missing", not
+            # abort the whole deployment.
+            artifact_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact&per_page=100" \
+              --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .id // empty' || true)"
+
+            if [ -n "$artifact_id" ]; then
+              if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/$id.zip" \
+                && unzip -q -o "$RUNNER_TEMP/$id.zip" -d "dist/$out_path"; then
+                status=ok
+              else
+                status=corrupt
+              fi
+              rm -f "$RUNNER_TEMP/$id.zip"
+            fi
+
+            if [ "$status" = ok ] && [ ! -f "dist/$out_path/index.html" ]; then
+              status=incomplete
+            fi
+
+            echo "$id: $status"
+            jq -c --argjson target "$target" --arg status "$status" \
+              '. + [$target + {status: $status}]' "$statuses" > "$statuses.next"
+            mv "$statuses.next" "$statuses"
+          done < <(jq -c '.[]' <<<"$TARGETS")
+
+          echo "targets=$(cat "$statuses")" >> "$GITHUB_OUTPUT"
+
+      - name: Fail if the main preview is missing
+        env:
+          TARGETS: ${{ steps.collect.outputs.targets }}
+        run: |
+          set -euo pipefail
+          status="$(jq -r '.[] | select(.id == "main") | .status' <<<"$TARGETS")"
+          if [ "$status" != "ok" ]; then
+            echo "::error::The main preview build is $status; refusing to publish a preview site without it."
+            exit 1
+          fi
+
+      - name: Assemble preview site
+        env:
+          MAIN_PREVIEW_PATH: ${{ env.MAIN_PREVIEW_PATH }}
+          PULL_REQUEST_PREVIEW_BASE_URL: ${{ env.PREVIEW_ORIGIN }}${{ env.PR_PREVIEW_PATH_BASE }}
+          TARGETS_JSON: ${{ steps.collect.outputs.targets }}
+        run: node scripts/assemble-preview.mjs
+
+      - name: Verify assembled site
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -f dist/staticwebapp.config.json
+          test -f dist/preview/index.html
 
       - name: Deploy to Azure Static Web Apps
         env:
           SWA_CLI_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_NONPROD_PREVIEW }}
-        run: >-
-          npx -y @azure/static-web-apps-cli@2.0.9 deploy ./dist
-          --env production
-          --deployment-token "$SWA_CLI_DEPLOYMENT_TOKEN"
+        run: |
+          set -uo pipefail
+
+          if [ -z "${SWA_CLI_DEPLOYMENT_TOKEN:-}" ]; then
+            echo "::error::Missing required secret: AZURE_STATIC_WEB_APPS_API_TOKEN_NONPROD_PREVIEW"
+            exit 1
+          fi
+
+          # The CLI has hung indefinitely against the deployment API before, so
+          # each attempt is bounded and retried rather than left to the job
+          # timeout.
+          for attempt in 1 2 3; do
+            echo "Deployment attempt $attempt"
+            if timeout 480 npx -y @azure/static-web-apps-cli@2.0.9 deploy ./dist \
+              --env production \
+              --deployment-token "$SWA_CLI_DEPLOYMENT_TOKEN"; then
+              exit 0
+            fi
+            echo "::warning::Static Web Apps deployment attempt $attempt failed or timed out."
+            sleep $((attempt * 20))
+          done
+
+          echo "::error::Static Web Apps deployment failed after 3 attempts."
+          exit 1
+
+      - name: Publish preview summary
+        if: ${{ !cancelled() }}
+        env:
+          PREVIEW_ORIGIN: ${{ env.PREVIEW_ORIGIN }}
+          TARGETS: ${{ steps.collect.outputs.targets }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Preview deployment"
+            echo
+            echo "| Target | Status | URL |"
+            echo "| --- | --- | --- |"
+            jq -r '.[] | "| \(.id) | \(.status) | \(.url) |"' <<<"$TARGETS"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Comment with PR preview link
         if: github.event_name == 'pull_request' && github.event.action != 'closed'
         uses: actions/github-script@v9.0.0
+        env:
+          PREVIEW_ORIGIN: ${{ env.PREVIEW_ORIGIN }}
+          TARGETS: ${{ steps.collect.outputs.targets }}
         with:
           script: |
             const marker = '<!-- elevated-thinking-pr-preview -->';
-            const previewUrl = `https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/${context.payload.pull_request.number}/`;
             const issue_number = context.payload.pull_request.number;
+            const targets = JSON.parse(process.env.TARGETS);
+            const target = targets.find((entry) => entry.number === issue_number);
 
+            if (!target || target.status !== 'ok') {
+              core.info('No successful preview for this pull request; skipping comment.');
+              return;
+            }
+
+            const previewUrl = `${process.env.PREVIEW_ORIGIN}/preview/pr/${issue_number}/`;
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -257,75 +363,3 @@ jobs:
                 `[Open PR preview](${previewUrl})`,
               ].join('\n'),
             });
-
-  close_preview:
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    environment:
-      name: non-prod-preview
-      url: https://delightful-plant-05da2520f.7.azurestaticapps.net/
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6.0.2
-        with:
-          persist-credentials: true
-          ref: main
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Collect open pull requests
-        id: open_pull_requests
-        uses: actions/github-script@v9.0.0
-        with:
-          result-encoding: string
-          script: |
-            const pullRequests = await github.paginate(github.rest.pulls.list, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              per_page: 100,
-            });
-
-            return JSON.stringify(
-              pullRequests
-                .filter(
-                  (pullRequest) =>
-                    pullRequest.head.repo?.full_name === context.payload.repository.full_name
-                )
-                .map((pullRequest) => ({
-                  number: pullRequest.number,
-                  title: pullRequest.title,
-                }))
-            );
-
-      - name: Build path-based preview deployment
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          MAIN_BRANCH: main
-          MAIN_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/
-          MAIN_PREVIEW_URL: /preview/
-          OPEN_PRS_JSON: ${{ steps.open_pull_requests.outputs.result }}
-          PR_PREVIEW_PATH_BASE: /preview/pr/
-          PULL_REQUEST_PREVIEW_BASE_URL: https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/
-        run: npm run build:preview-deployment
-
-      - name: Verify Static Web Apps config
-        run: test -f dist/staticwebapp.config.json
-
-      - name: Deploy to Azure Static Web Apps
-        env:
-          SWA_CLI_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_NONPROD_PREVIEW }}
-        run: >-
-          npx -y @azure/static-web-apps-cli@2.0.9 deploy ./dist
-          --env production
-          --deployment-token "$SWA_CLI_DEPLOYMENT_TOKEN"

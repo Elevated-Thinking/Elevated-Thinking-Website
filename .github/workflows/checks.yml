@@ -1,0 +1,153 @@
+name: Checks
+
+# The single definition of "green" for this repository. Pull requests and pushes
+# to main run it directly; the production release workflow calls it so a release
+# is gated on exactly the same checks a pull request was.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_call:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: "20"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Format and types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Check types
+        run: npm run typecheck
+
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: >-
+          npm run test:unit -- --coverage
+          --coverageReporters=text-summary
+          --coverageReporters=lcov
+          --coverageReporters=json-summary
+
+      - name: Publish coverage summary
+        if: ${{ !cancelled() }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const summaryPath = 'coverage/coverage-summary.json';
+
+          if (!fs.existsSync(summaryPath)) {
+            process.exit(0);
+          }
+
+          const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8')).total;
+          const rows = [
+            ['Statements', summary.statements.pct],
+            ['Branches', summary.branches.pct],
+            ['Functions', summary.functions.pct],
+            ['Lines', summary.lines.pct],
+          ];
+
+          const body = [
+            '## Unit Test Coverage',
+            '',
+            '| Metric | Coverage |',
+            '| --- | ---: |',
+            ...rows.map(([label, value]) => `| ${label} | ${value}% |`),
+          ].join('\n');
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${body}\n`);
+          EOF
+
+      # Diagnostics must never decide whether the code is good. Artifact storage
+      # has its own failure modes, and a failed upload used to skip deployments.
+      - name: Upload coverage artifact
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage/
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
+
+  smoke_tests:
+    name: Smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npm run test:smoke
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: playwright-report/
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14

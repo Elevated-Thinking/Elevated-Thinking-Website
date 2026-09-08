@@ -48,15 +48,29 @@ The production bundle is written to `dist/`.
 
 ## CI/CD Overview
 
-GitHub Actions runs separate validation, unit test, and smoke test jobs for pull requests, pushes to `main`, and production release tags.
+Three workflows, each answering one question. See [docs/ci-cd-strategy.md](docs/ci-cd-strategy.md) for the design and its invariants.
+
+| Workflow                | File                                      | Runs on                                             |
+| ----------------------- | ----------------------------------------- | --------------------------------------------------- |
+| Checks                  | `.github/workflows/checks.yml`            | Every pull request and every push to `main`         |
+| Non-Prod Preview Deploy | `.github/workflows/non-prod-preview.yml`  | Same-repository pull request events, push to `main` |
+| Production Deploy       | `.github/workflows/deploy-production.yml` | `v*` tags, and manual rollback                      |
+
+`Checks` is the single definition of "green":
 
 - `validate` runs formatting and TypeScript checks.
 - `unit_tests` runs Jest with coverage. The project enforces a 60% global coverage threshold.
 - `smoke_tests` builds the site, serves the production bundle locally, runs Playwright Chromium smoke tests, and includes the axe accessibility scan.
-- Same-repository pull requests deploy protected Azure Static Web Apps preview environments after checks pass.
-- Fork pull requests run checks but do not deploy because they cannot access deployment secrets.
-- Pushes to `main` publish the protected non-production review index and latest main preview.
-- Pushed release tags matching `v*` run production verification and deploy to Hostinger.
+
+`Production Deploy` calls the same workflow, so a release is gated on exactly the checks a pull request was gated on.
+
+Preview deployment rules:
+
+- Each preview target (`main`, plus each eligible open pull request) is built once per commit in its own job and cached as an artifact. A normal event rebuilds only the target that changed.
+- One pull request failing to build no longer affects any other preview; it is simply left off the review index.
+- Fork pull requests run checks but never enter the preview pipeline, because they cannot access deployment secrets.
+- Dependency-bot pull requests are skipped by default. Add the `preview` label to a bot pull request to give it a preview.
+- Closing a pull request needs no separate workflow: the closed pull request is no longer open, so the next assembly leaves it out.
 
 ## GitHub Environments
 
@@ -98,11 +112,11 @@ Optional secret:
 | ----------------------- | ------------------------- | ------------------------------------- |
 | `HOSTINGER_KNOWN_HOSTS` | SSH host key verification | `ssh-keyscan -p <port> <host>` output |
 
-Optional variable:
+Recommended variable:
 
-| Name            | Used for                                  | Value                      |
-| --------------- | ----------------------------------------- | -------------------------- |
-| `PROD_SITE_URL` | GitHub deployment URL for production jobs | Public production site URL |
+| Name            | Used for                                                              | Value                      |
+| --------------- | --------------------------------------------------------------------- | -------------------------- |
+| `PROD_SITE_URL` | GitHub deployment URL, and post-deploy verification of the live build | Public production site URL |
 
 `GITHUB_TOKEN` is provided automatically by GitHub Actions and does not need to be configured.
 
@@ -115,6 +129,10 @@ Preview sites are protected by Azure Static Web Apps authentication. Users sign 
 - Pull request previews: `https://delightful-plant-05da2520f.7.azurestaticapps.net/preview/pr/<number>/`
 
 The review index links to the latest main preview and open same-repository pull request previews. Pull request previews are deployed under the protected review host so reviewers use the same GitHub sign-in and `reviewer` role assignment for every preview.
+
+Azure Static Web Apps replaces the whole contents of an environment on every deploy, so the site is always published as one assembled tree rather than as independent per-pull-request deployments.
+
+To force a full rebuild of every preview target, run **Actions -> Non-Prod Preview Deploy -> Run workflow** with `cache_bust` enabled, or bump `PREVIEW_CACHE_VERSION` in the workflow.
 
 ### Preview Deployment Access
 
@@ -147,9 +165,16 @@ git push --follow-tags
 
 Use `patch`, `minor`, or `major` as appropriate. `npm version` updates `package.json` and `package-lock.json`, creates the release commit, and creates the matching tag. `git push --follow-tags` pushes the commit and tag, which starts the production workflow.
 
-The workflow verifies that the Git tag matches the package version, runs formatting, TypeScript, unit, and smoke checks, uploads the built `dist/` artifact, deploys it to the inactive Hostinger blue/green slot using SSH key authentication over SFTP, promotes that same build to the live Hostinger web root, updates `.deploy-slots/.active-slot`, and creates the GitHub release.
+The workflow runs the shared `Checks` workflow on the tagged commit, verifies that the Git tag matches the package version, builds once, stamps `dist/build-id.txt` with `<tag> <sha>`, and uploads that build. Every later job deploys that artifact, so the bytes that passed checks are the bytes that ship.
 
-If the `prod` environment has required reviewers, the deployment pauses for approval before accessing Hostinger secrets.
+The deploy then uploads the release to the inactive Hostinger blue/green slot over SFTP, verifies the slot really holds this build, promotes it to the live web root, records the new active slot, and fetches `build-id.txt` back over HTTPS to confirm the live site is serving this release. The GitHub release is created in a separate job so a release-API hiccup cannot make a healthy deploy look failed.
+
+Two deliberate safety properties:
+
+- The promotion mirrors additions and updates first and prunes in a second pass, so a visitor during a deploy sees the old page or the new page, never a page whose assets have already been deleted.
+- If anything fails after promotion, the previous slot is restored automatically and the job then fails loudly.
+
+If the `prod` environment has required reviewers, the deployment pauses for approval before accessing Hostinger secrets. Set the optional `PROD_SITE_URL` variable to enable post-deploy verification; without it the workflow warns and skips that check.
 
 ### Retry And Rollback
 

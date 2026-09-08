@@ -1,5 +1,9 @@
 name: Production Deploy
 
+# Production is released by pushing a v* tag. The same Checks workflow that
+# gates pull requests gates the release, the exact bytes that passed those
+# checks are the bytes that ship, and the deploy is not called successful until
+# the live site serves the build it just published.
 on:
   push:
     tags:
@@ -20,28 +24,42 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: "20"
 
 permissions:
   contents: read
 
+# Never interrupt production. A cancelled deploy can leave the web root halfway
+# between two releases, so queued runs wait instead of cancelling the run ahead.
 concurrency:
-  group: production-hostinger
-  cancel-in-progress: true
+  group: production
+  cancel-in-progress: false
 
 jobs:
-  verify:
+  checks:
+    name: Checks
     if: github.event_name == 'push'
+    uses: ./.github/workflows/checks.yml
+
+  package:
+    name: Package release
+    if: github.event_name == 'push'
+    needs: checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      build_id: ${{ steps.build.outputs.build_id }}
+      artifact: ${{ steps.build.outputs.artifact }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
@@ -60,20 +78,24 @@ jobs:
             exit 1
           fi
 
-      - name: Check formatting
-        run: npm run format:check
+      - name: Build release
+        id: build
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
 
-      - name: Check types
-        run: npm run typecheck
+          npm run build
 
-      - name: Run unit tests
-        run: npm run test:unit -- --coverage
+          # A build stamp the live site can be asked for after the deploy. This
+          # is what turns "the upload finished" into "the release is serving".
+          build_id="$RELEASE_TAG $GITHUB_SHA"
+          printf '%s\n' "$build_id" > dist/build-id.txt
 
-      - name: Install Playwright browser dependencies
-        run: npx playwright install --with-deps chromium
-
-      - name: Run smoke tests
-        run: npm run test:smoke
+          {
+            echo "build_id=$build_id"
+            echo "artifact=production-dist-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Verify generated SEO files
         run: |
@@ -86,152 +108,179 @@ jobs:
           grep -F "Sitemap: https://www.elevatedthinking.co/sitemap.xml" dist/robots.txt
           grep -F "https://www.elevatedthinking.co/" dist/sitemap.xml
 
-      - name: Upload Playwright report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: playwright-report-production-${{ github.run_id }}
-          path: playwright-report/
-          if-no-files-found: ignore
-
       - name: Upload production artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: production-dist
+          name: ${{ steps.build.outputs.artifact }}
           path: dist
           if-no-files-found: error
+          overwrite: true
+          retention-days: 30
 
   deploy:
+    name: Deploy to production
     if: github.event_name == 'push'
-    needs: verify
+    needs: package
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
       deployments: write
     environment:
       name: prod
       url: ${{ vars.PROD_SITE_URL }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Download production artifact
         uses: actions/download-artifact@v8.0.1
         with:
-          name: production-dist
+          name: ${{ needs.package.outputs.artifact }}
           path: dist
 
-      - name: Install lftp
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes lftp
+      - name: Open Hostinger session
+        uses: ./.github/actions/hostinger-session
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          remote-path: ${{ secrets.HOSTINGER_REMOTE_PATH }}
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
 
-      - name: Configure Hostinger SSH key
-        env:
-          HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
-          HOSTINGER_SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "$HOSTINGER_SSH_PRIVATE_KEY" ]; then
-            echo "::error::Missing required secret: HOSTINGER_SSH_PRIVATE_KEY"
-            exit 1
-          fi
-
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
-
-          ssh_key_path="$RUNNER_TEMP/hostinger_deploy_key"
-          printf '%s\n' "$HOSTINGER_SSH_PRIVATE_KEY" > "$ssh_key_path"
-          chmod 600 "$ssh_key_path"
-
-          if [ -n "$HOSTINGER_KNOWN_HOSTS" ]; then
-            printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-            strict_host_key_checking="yes"
-          else
-            touch "$HOME/.ssh/known_hosts"
-            strict_host_key_checking="accept-new"
-          fi
-          chmod 644 "$HOME/.ssh/known_hosts"
-
-          {
-            echo "HOSTINGER_SSH_KEY_PATH=$ssh_key_path"
-            echo "HOSTINGER_STRICT_HOST_KEY_CHECKING=$strict_host_key_checking"
-          } >> "$GITHUB_ENV"
-
-      - name: Deploy blue/green slot to Hostinger over SFTP
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-          HOSTINGER_REMOTE_PATH: ${{ secrets.HOSTINGER_REMOTE_PATH }}
-          HOSTINGER_USERNAME: ${{ secrets.HOSTINGER_USERNAME }}
+      - name: Select blue/green slot
         run: |
           set -euo pipefail
 
-          HOSTINGER_PORT="${HOSTINGER_PORT:-22}"
-          if [ "$HOSTINGER_REMOTE_PATH" != "/" ]; then
-            HOSTINGER_REMOTE_PATH="${HOSTINGER_REMOTE_PATH%/}"
-          fi
-          SLOTS_ROOT="$HOSTINGER_REMOTE_PATH/.deploy-slots"
-          ACTIVE_SLOT_FILE=".active-slot"
-          SSH_CONNECT_PROGRAM="ssh -a -x -i $HOSTINGER_SSH_KEY_PATH -o BatchMode=yes -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=$HOSTINGER_STRICT_HOST_KEY_CHECKING -o ConnectTimeout=20 -o ConnectionAttempts=1"
-
-          for required in HOSTINGER_HOST HOSTINGER_REMOTE_PATH HOSTINGER_USERNAME HOSTINGER_SSH_KEY_PATH HOSTINGER_STRICT_HOST_KEY_CHECKING; do
-            if [ -z "${!required}" ]; then
-              echo "::error::Missing required secret: $required"
-              exit 1
-            fi
-          done
-
-          tmp_dir="$(mktemp -d)"
-          cleanup() {
-            rm -rf "$tmp_dir"
-          }
-          trap cleanup EXIT
-
-          active_slot="green"
-          if lftp -u "$HOSTINGER_USERNAME","" "sftp://$HOSTINGER_HOST:$HOSTINGER_PORT" <<EOF_LFTP
-          set sftp:connect-program "$SSH_CONNECT_PROGRAM"
-          set sftp:auto-confirm yes
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
-          set net:timeout 20
-          get -O "$tmp_dir" "$SLOTS_ROOT/$ACTIVE_SLOT_FILE"
-          bye
-          EOF_LFTP
-          then
-            candidate_slot="$(tr -d '[:space:]' < "$tmp_dir/$ACTIVE_SLOT_FILE" || true)"
-            if [ "$candidate_slot" = "blue" ] || [ "$candidate_slot" = "green" ]; then
-              active_slot="$candidate_slot"
-            fi
-          else
-            echo "No existing active slot marker found. Using green as the previous slot."
-          fi
-
-          if [ "$active_slot" = "blue" ]; then
+          previous_slot="$(scripts/deploy/hostinger-slot.sh read)"
+          if [ "$previous_slot" = "blue" ]; then
             target_slot="green"
           else
             target_slot="blue"
           fi
 
-          echo "Current active slot: $active_slot"
-          echo "Deploying new release to slot: $target_slot"
+          echo "Currently active slot: $previous_slot"
+          echo "Deploying this release to slot: $target_slot"
 
-          printf '%s\n' "$target_slot" > "$tmp_dir/$ACTIVE_SLOT_FILE"
+          {
+            echo "PREVIOUS_SLOT=$previous_slot"
+            echo "TARGET_SLOT=$target_slot"
+          } >> "$GITHUB_ENV"
 
-          lftp -u "$HOSTINGER_USERNAME","" "sftp://$HOSTINGER_HOST:$HOSTINGER_PORT" <<EOF_LFTP
-          set sftp:connect-program "$SSH_CONNECT_PROGRAM"
-          set sftp:auto-confirm yes
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
-          set net:timeout 20
-          mkdir -p "$SLOTS_ROOT/blue"
-          mkdir -p "$SLOTS_ROOT/green"
-          mirror --reverse --delete --verbose dist "$SLOTS_ROOT/$target_slot"
-          mirror --reverse --delete --verbose --exclude-glob .deploy-slots/ dist "$HOSTINGER_REMOTE_PATH"
-          put -O "$SLOTS_ROOT" "$tmp_dir/$ACTIVE_SLOT_FILE"
-          bye
-          EOF_LFTP
+      - name: Upload release to the inactive slot
+        run: |
+          set -euo pipefail
 
-          echo "Promotion complete. Active slot set to: $target_slot"
+          "$LFTP_RUN" <<EOF
+          mkdir -p -f "$HOSTINGER_SLOTS_ROOT"
+          mkdir -p -f "$HOSTINGER_SLOTS_ROOT/blue"
+          mkdir -p -f "$HOSTINGER_SLOTS_ROOT/green"
+          mirror --reverse --delete --verbose dist "$HOSTINGER_SLOTS_ROOT/$TARGET_SLOT"
+          EOF
 
+      - name: Verify the uploaded slot
+        env:
+          EXPECTED_BUILD_ID: ${{ needs.package.outputs.build_id }}
+        run: |
+          set -euo pipefail
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+
+          "$LFTP_RUN" <<EOF
+          get -O "$tmp_dir" "$HOSTINGER_SLOTS_ROOT/$TARGET_SLOT/build-id.txt"
+          EOF
+
+          uploaded="$(tr -d '\r' < "$tmp_dir/build-id.txt" | head -n 1)"
+          if [ "$uploaded" != "$EXPECTED_BUILD_ID" ]; then
+            echo "::error::Slot $TARGET_SLOT holds '$uploaded' but this release is '$EXPECTED_BUILD_ID'."
+            exit 1
+          fi
+
+          echo "Slot $TARGET_SLOT verified as $uploaded."
+
+      - name: Promote the release to the live web root
+        run: |
+          set -euo pipefail
+          echo "PROMOTION_STARTED=true" >> "$GITHUB_ENV"
+          scripts/deploy/hostinger-promote.sh dist
+
+      - name: Record the active slot
+        run: scripts/deploy/hostinger-slot.sh write "$TARGET_SLOT"
+
+      - name: Verify the live site serves this release
+        env:
+          EXPECTED_BUILD_ID: ${{ needs.package.outputs.build_id }}
+          PROD_SITE_URL: ${{ vars.PROD_SITE_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PROD_SITE_URL:-}" ]; then
+            echo "::warning::PROD_SITE_URL is not set, so the live site was not verified after deploying."
+            exit 0
+          fi
+
+          url="${PROD_SITE_URL%/}/build-id.txt"
+
+          for attempt in 1 2 3 4 5 6; do
+            # --location so a future apex/www canonical redirect does not read as a
+            # failed verification.
+            served="$(curl -fsSL --max-time 20 "$url" 2>/dev/null | tr -d '\r' | head -n 1 || true)"
+
+            if [ "$served" = "$EXPECTED_BUILD_ID" ]; then
+              echo "Live site is serving $served."
+              exit 0
+            fi
+
+            echo "Attempt $attempt: live site reports '${served:-<no response>}'."
+            sleep 10
+          done
+
+          echo "::error::Live site never reported build '$EXPECTED_BUILD_ID'."
+          exit 1
+
+      # If anything after the promotion failed, put the previous release back
+      # rather than leaving production on a half-verified deploy.
+      - name: Roll back to the previous slot
+        if: failure() && env.PROMOTION_STARTED == 'true'
+        run: |
+          set -euo pipefail
+
+          echo "::warning::Deployment failed after promotion; restoring slot $PREVIOUS_SLOT."
+
+          rollback_dir="$RUNNER_TEMP/rollback"
+          scripts/deploy/hostinger-slot.sh fetch "$PREVIOUS_SLOT" "$rollback_dir"
+          scripts/deploy/hostinger-promote.sh "$rollback_dir"
+          scripts/deploy/hostinger-slot.sh write "$PREVIOUS_SLOT"
+
+          echo "::error::Production was rolled back to slot $PREVIOUS_SLOT."
+
+      - name: Publish deployment summary
+        if: ${{ !cancelled() }}
+        env:
+          BUILD_ID: ${{ needs.package.outputs.build_id }}
+        run: |
+          {
+            echo "## Production deployment"
+            echo
+            echo "- Build: \`$BUILD_ID\`"
+            echo "- Previous slot: \`${PREVIOUS_SLOT:-unknown}\`"
+            echo "- Target slot: \`${TARGET_SLOT:-unknown}\`"
+            echo "- Result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publish GitHub release
+    if: github.event_name == 'push'
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
       - name: Create GitHub release for deployed tag
         uses: actions/github-script@v9.0.0
         env:
@@ -266,146 +315,85 @@ jobs:
             });
 
   rollback:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.operation == 'rollback'
+    name: Roll back production
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
+      contents: read
       deployments: write
     environment:
       name: prod
       url: ${{ vars.PROD_SITE_URL }}
     steps:
-      - name: Install lftp
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes lftp
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Configure Hostinger SSH key
+      - name: Open Hostinger session
+        uses: ./.github/actions/hostinger-session
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          remote-path: ${{ secrets.HOSTINGER_REMOTE_PATH }}
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
+
+      - name: Resolve rollback slot
         env:
-          HOSTINGER_KNOWN_HOSTS: ${{ secrets.HOSTINGER_KNOWN_HOSTS }}
-          HOSTINGER_SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          ROLLBACK_SLOT_INPUT: ${{ inputs.rollback_slot }}
         run: |
           set -euo pipefail
 
-          if [ -z "$HOSTINGER_SSH_PRIVATE_KEY" ]; then
-            echo "::error::Missing required secret: HOSTINGER_SSH_PRIVATE_KEY"
-            exit 1
-          fi
+          active_slot="$(scripts/deploy/hostinger-slot.sh read)"
+          requested="$(printf '%s' "$ROLLBACK_SLOT_INPUT" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
 
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
-
-          ssh_key_path="$RUNNER_TEMP/hostinger_deploy_key"
-          printf '%s\n' "$HOSTINGER_SSH_PRIVATE_KEY" > "$ssh_key_path"
-          chmod 600 "$ssh_key_path"
-
-          if [ -n "$HOSTINGER_KNOWN_HOSTS" ]; then
-            printf '%s\n' "$HOSTINGER_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-            strict_host_key_checking="yes"
-          else
-            touch "$HOME/.ssh/known_hosts"
-            strict_host_key_checking="accept-new"
-          fi
-          chmod 644 "$HOME/.ssh/known_hosts"
-
-          {
-            echo "HOSTINGER_SSH_KEY_PATH=$ssh_key_path"
-            echo "HOSTINGER_STRICT_HOST_KEY_CHECKING=$strict_host_key_checking"
-          } >> "$GITHUB_ENV"
-
-      - name: Roll back production to previous slot
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-          HOSTINGER_REMOTE_PATH: ${{ secrets.HOSTINGER_REMOTE_PATH }}
-          HOSTINGER_USERNAME: ${{ secrets.HOSTINGER_USERNAME }}
-          ROLLBACK_SLOT_INPUT: ${{ github.event.inputs.rollback_slot }}
-        run: |
-          set -euo pipefail
-
-          HOSTINGER_PORT="${HOSTINGER_PORT:-22}"
-          if [ "$HOSTINGER_REMOTE_PATH" != "/" ]; then
-            HOSTINGER_REMOTE_PATH="${HOSTINGER_REMOTE_PATH%/}"
-          fi
-          SLOTS_ROOT="$HOSTINGER_REMOTE_PATH/.deploy-slots"
-          ACTIVE_SLOT_FILE=".active-slot"
-          SSH_CONNECT_PROGRAM="ssh -a -x -i $HOSTINGER_SSH_KEY_PATH -o BatchMode=yes -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=$HOSTINGER_STRICT_HOST_KEY_CHECKING -o ConnectTimeout=20 -o ConnectionAttempts=1"
-
-          for required in HOSTINGER_HOST HOSTINGER_REMOTE_PATH HOSTINGER_USERNAME HOSTINGER_SSH_KEY_PATH HOSTINGER_STRICT_HOST_KEY_CHECKING; do
-            if [ -z "${!required}" ]; then
-              echo "::error::Missing required secret: $required"
-              exit 1
-            fi
-          done
-
-          tmp_dir="$(mktemp -d)"
-          rollback_dist="$tmp_dir/rollback-dist"
-          cleanup() {
-            rm -rf "$tmp_dir"
-          }
-          trap cleanup EXIT
-
-          lftp -u "$HOSTINGER_USERNAME","" "sftp://$HOSTINGER_HOST:$HOSTINGER_PORT" <<EOF_LFTP
-          set sftp:connect-program "$SSH_CONNECT_PROGRAM"
-          set sftp:auto-confirm yes
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
-          set net:timeout 20
-          get -O "$tmp_dir" "$SLOTS_ROOT/$ACTIVE_SLOT_FILE"
-          bye
-          EOF_LFTP
-
-          active_slot="$(tr -d '[:space:]' < "$tmp_dir/$ACTIVE_SLOT_FILE" || true)"
-          if [ "$active_slot" != "blue" ] && [ "$active_slot" != "green" ]; then
-            echo "::error::Cannot determine active slot from $SLOTS_ROOT/$ACTIVE_SLOT_FILE"
-            exit 1
-          fi
-
-          requested_slot="$(printf '%s' "$ROLLBACK_SLOT_INPUT" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
-          if [ -n "$requested_slot" ]; then
-            if [ "$requested_slot" != "blue" ] && [ "$requested_slot" != "green" ]; then
+          if [ -n "$requested" ]; then
+            if [ "$requested" != "blue" ] && [ "$requested" != "green" ]; then
               echo "::error::rollback_slot must be blue or green when provided."
               exit 1
             fi
-            rollback_slot="$requested_slot"
+            rollback_slot="$requested"
+          elif [ "$active_slot" = "blue" ]; then
+            rollback_slot="green"
           else
-            if [ "$active_slot" = "blue" ]; then
-              rollback_slot="green"
-            else
-              rollback_slot="blue"
-            fi
+            rollback_slot="blue"
           fi
 
           echo "Active slot: $active_slot"
           echo "Rollback target slot: $rollback_slot"
+          echo "ROLLBACK_SLOT=$rollback_slot" >> "$GITHUB_ENV"
 
-          mkdir -p "$rollback_dist"
+      - name: Restore the rollback slot
+        run: |
+          set -euo pipefail
 
-          lftp -u "$HOSTINGER_USERNAME","" "sftp://$HOSTINGER_HOST:$HOSTINGER_PORT" <<EOF_LFTP
-          set sftp:connect-program "$SSH_CONNECT_PROGRAM"
-          set sftp:auto-confirm yes
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
-          set net:timeout 20
-          mirror --verbose "$SLOTS_ROOT/$rollback_slot" "$rollback_dist"
-          bye
-          EOF_LFTP
+          rollback_dir="$RUNNER_TEMP/rollback"
+          scripts/deploy/hostinger-slot.sh fetch "$ROLLBACK_SLOT" "$rollback_dir"
+          scripts/deploy/hostinger-promote.sh "$rollback_dir"
+          scripts/deploy/hostinger-slot.sh write "$ROLLBACK_SLOT"
 
-          if [ ! -f "$rollback_dist/index.html" ]; then
-            echo "::error::Rollback slot $rollback_slot does not contain a valid release (missing index.html)."
-            exit 1
+      - name: Verify the live site after rollback
+        env:
+          PROD_SITE_URL: ${{ vars.PROD_SITE_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PROD_SITE_URL:-}" ]; then
+            echo "::warning::PROD_SITE_URL is not set, so the live site was not verified after rolling back."
+            exit 0
           fi
 
-          printf '%s\n' "$rollback_slot" > "$tmp_dir/$ACTIVE_SLOT_FILE"
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 20 -o /dev/null "${PROD_SITE_URL%/}/"; then
+              echo "Live site responded after rolling back to $ROLLBACK_SLOT."
+              exit 0
+            fi
+            echo "Attempt $attempt: live site did not respond."
+            sleep 10
+          done
 
-          lftp -u "$HOSTINGER_USERNAME","" "sftp://$HOSTINGER_HOST:$HOSTINGER_PORT" <<EOF_LFTP
-          set sftp:connect-program "$SSH_CONNECT_PROGRAM"
-          set sftp:auto-confirm yes
-          set net:max-retries 2
-          set net:reconnect-interval-base 5
-          set net:timeout 20
-          mirror --reverse --delete --verbose --exclude-glob .deploy-slots/ "$rollback_dist" "$HOSTINGER_REMOTE_PATH"
-          put -O "$SLOTS_ROOT" "$tmp_dir/$ACTIVE_SLOT_FILE"
-          bye
-          EOF_LFTP
-
-          echo "Rollback complete. Active slot set to: $rollback_slot"
+          echo "::error::Live site did not respond after rolling back to $ROLLBACK_SLOT."
+          exit 1
