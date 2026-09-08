@@ -28,6 +28,15 @@ strips metadata, converts to sRGB, and enforces these budgets:
 | Service & workflow design | `service-workflow` | `.cache/image-sources/service-workflow.jpg` |
 | UX research & design      | `ux-research`      | `.cache/image-sources/ux-research.jpg`      |
 | AI-enabled delivery       | `ai-delivery`      | `.cache/image-sources/ai-delivery.jpg`      |
+| Polaris case study hero   | `polaris-hero`     | `.cache/image-sources/polaris-hero.jpg`     |
+
+## Aspect Ratios
+
+Images are cropped to `5 / 4` portrait by default. An entry in the `images`
+array in `scripts/build-images.mjs` can override this with its own
+`aspectRatio`, which is applied as `height = width * aspectRatio`. The Polaris
+case study hero uses `9 / 16` so the landscape product screenshot is not
+cropped; its CSS frame (`.polaris-hero-visual`) matches at `aspect-ratio: 16 / 9`.
 
 ## Rules For Future Images
 

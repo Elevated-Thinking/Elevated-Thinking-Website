@@ -115,6 +115,7 @@ button {
 .polaris-hero-actions a:first-child,
 .polaris-cta-actions > a:first-child {
   background: var(--color-accent);
+  border-radius: 0.75rem;
   color: white;
   padding: 0.9rem 1.45rem;
 }
@@ -124,7 +125,7 @@ button {
   padding-bottom: 0.15rem;
 }
 .polaris-hero-visual {
-  aspect-ratio: 1.25 / 1;
+  aspect-ratio: 16 / 9;
   border-radius: 1.4rem;
   box-shadow: 0 1.5rem 3rem rgb(47 47 47 / 0.16);
   overflow: hidden;

@@ -244,7 +244,7 @@ describe("App", () => {
     );
     expect(
       screen.getAllByRole("link", {
-        name: /talk with elevated|start a conversation/i,
+        name: /request a demo|start a conversation/i,
       })
     ).toHaveLength(2);
     for (const link of screen.getAllByRole("link", {
@@ -285,6 +285,28 @@ describe("App", () => {
     expect(
       screen.getByRole("link", { name: /explore our capabilities/i })
     ).toHaveAttribute("href", "/preview/pr/43/about/#capabilities");
+  });
+
+  it("keeps shared navigation within the latest main preview", () => {
+    window.history.replaceState({}, "", "/preview/polaris/");
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
+      "href",
+      "/preview/"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "/preview/about/"
+    );
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "href",
+      "/preview/polaris/"
+    );
+    expect(
+      screen.getByRole("link", { name: /explore our capabilities/i })
+    ).toHaveAttribute("href", "/preview/about/#capabilities");
   });
 
   it("renders the requested about page why visual labels", () => {

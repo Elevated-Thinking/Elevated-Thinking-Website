@@ -20,8 +20,8 @@ const editorialColumns = [
 
 const recognition = [
   "USSF GenAI Challenge Winner — 2024",
-  "USSF AI Challenge — Guardian Choice Winner — 2026",
-  "USSF AI Challenge — CSO Choice Award",
+  "USSF AI Challenge — Guardian Choice Winner — 2025",
+  "USSF AI Challenge — CSO Choice Award — 2025",
 ] as const;
 
 const contributions = [
@@ -47,7 +47,7 @@ export function PolarisPage() {
           </p>
           <div className="polaris-hero-actions">
             <a href={calendarUrl} rel="noreferrer" target="_blank">
-              Talk with Elevated
+              Request a Demo
             </a>
             <a href={siteUrl("about/#capabilities")}>
               Explore our capabilities

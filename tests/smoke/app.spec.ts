@@ -93,7 +93,7 @@ test("Polaris case study loads with its case-study actions", async ({
     })
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /talk with elevated/i })
+    page.getByRole("link", { name: /request a demo/i })
   ).toHaveAttribute("href", calendarUrl);
   await expect(
     page.getByRole("link", { name: /explore our capabilities/i })
