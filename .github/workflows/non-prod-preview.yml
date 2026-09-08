@@ -172,6 +172,8 @@ jobs:
         with:
           name: ${{ matrix.target.artifact }}
           path: preview-out
+          # Dotfiles are excluded by default; previews should match production.
+          include-hidden-files: true
           if-no-files-found: error
           overwrite: true
           retention-days: 30

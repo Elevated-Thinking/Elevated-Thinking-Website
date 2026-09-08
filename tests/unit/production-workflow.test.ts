@@ -59,6 +59,25 @@ describe("production workflow", () => {
     );
   });
 
+  it("carries dotfiles through the artifact so .htaccess reaches the web root", () => {
+    expect(workflow).toContain("include-hidden-files: true");
+    expect(workflow).toContain("test -f dist/.htaccess");
+  });
+
+  it("refuses to deploy an artifact that lost files in transit", () => {
+    expect(workflow).toContain(
+      "- name: Verify the artifact survived the round trip"
+    );
+    expect(workflow).toContain(
+      "for required in index.html build-id.txt robots.txt sitemap.xml .htaccess"
+    );
+    expect(
+      workflow.indexOf("Verify the artifact survived the round trip")
+    ).toBeLessThan(
+      workflow.indexOf("- name: Upload release to the inactive slot")
+    );
+  });
+
   it("deploys the artifact that passed checks rather than rebuilding", () => {
     expect(workflow).toContain("uses: actions/download-artifact@v8.0.1");
     expect(workflow).toContain("name: ${{ needs.package.outputs.artifact }}");

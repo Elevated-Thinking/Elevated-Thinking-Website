@@ -107,12 +107,17 @@ jobs:
           grep -F "Allow: /" dist/robots.txt
           grep -F "Sitemap: https://elevatedthinking.co/sitemap.xml" dist/robots.txt
           grep -F "https://elevatedthinking.co/" dist/sitemap.xml
+          test -f dist/.htaccess
+          grep -F "RewriteRule" dist/.htaccess
 
       - name: Upload production artifact
         uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: dist
+          # Without this the action silently drops dotfiles, which quietly left
+          # .htaccess out of a release and shipped a site with no www redirect.
+          include-hidden-files: true
           if-no-files-found: error
           overwrite: true
           retention-days: 30
@@ -140,6 +145,24 @@ jobs:
         with:
           name: ${{ needs.package.outputs.artifact }}
           path: dist
+
+      - name: Verify the artifact survived the round trip
+        run: |
+          set -euo pipefail
+
+          missing=()
+          for required in index.html build-id.txt robots.txt sitemap.xml .htaccess; do
+            if [ ! -f "dist/$required" ]; then
+              missing+=("$required")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Artifact is missing ${missing[*]}; refusing to deploy an incomplete release."
+            exit 1
+          fi
+
+          echo "Artifact contains $(find dist -type f | wc -l | tr -d ' ') files, including all required entries."
 
       - name: Open Hostinger session
         uses: ./.github/actions/hostinger-session

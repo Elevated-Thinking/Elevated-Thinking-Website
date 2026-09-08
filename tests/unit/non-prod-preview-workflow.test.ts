@@ -38,6 +38,10 @@ describe("non-prod preview workflow", () => {
     );
   });
 
+  it("carries dotfiles through preview artifacts", () => {
+    expect(workflow).toContain("include-hidden-files: true");
+  });
+
   it("gives every job that claims a runner a timeout", () => {
     const runners = workflow.match(/^ {4}runs-on:/gm) ?? [];
     const timeouts = workflow.match(/^ {4}timeout-minutes:/gm) ?? [];
