@@ -27,22 +27,22 @@ describe("preview metadata", () => {
     writeFileSync(
       join(tempDir, "index.html"),
       [
-        '<link rel="canonical" href="https://www.elevatedthinking.co/" />',
-        '<meta property="og:url" content="https://www.elevatedthinking.co/" />',
+        '<link rel="canonical" href="https://elevatedthinking.co/" />',
+        '<meta property="og:url" content="https://elevatedthinking.co/" />',
       ].join("\n")
     );
     writeFileSync(
       join(tempDir, "about", "index.html"),
       [
-        '<link rel="canonical" href="https://www.elevatedthinking.co/about/" />',
-        '<meta property="og:url" content="https://www.elevatedthinking.co/about/" />',
+        '<link rel="canonical" href="https://elevatedthinking.co/about/" />',
+        '<meta property="og:url" content="https://elevatedthinking.co/about/" />',
       ].join("\n")
     );
     writeFileSync(
       join(tempDir, "polaris", "index.html"),
       [
-        '<link rel="canonical" href="https://www.elevatedthinking.co/polaris/" />',
-        '<meta property="og:url" content="https://www.elevatedthinking.co/polaris/" />',
+        '<link rel="canonical" href="https://elevatedthinking.co/polaris/" />',
+        '<meta property="og:url" content="https://elevatedthinking.co/polaris/" />',
       ].join("\n")
     );
 

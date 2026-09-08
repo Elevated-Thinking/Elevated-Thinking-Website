@@ -26,10 +26,10 @@ describe("production workflow", () => {
     expect(workflow).toContain('grep -F "User-agent: *" dist/robots.txt');
     expect(workflow).toContain('grep -F "Allow: /" dist/robots.txt');
     expect(workflow).toContain(
-      'grep -F "Sitemap: https://www.elevatedthinking.co/sitemap.xml" dist/robots.txt'
+      'grep -F "Sitemap: https://elevatedthinking.co/sitemap.xml" dist/robots.txt'
     );
     expect(workflow).toContain(
-      'grep -F "https://www.elevatedthinking.co/" dist/sitemap.xml'
+      'grep -F "https://elevatedthinking.co/" dist/sitemap.xml'
     );
     expect(workflow.indexOf(verifyStep)).toBeLessThan(
       workflow.indexOf(uploadStep)

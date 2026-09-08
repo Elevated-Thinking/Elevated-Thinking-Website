@@ -75,7 +75,7 @@ The production workflow uses `lftp mirror --reverse --delete`, so `HOSTINGER_REM
 If you want the GitHub `prod` environment to show a clickable deployment URL, add this environment variable on `prod`:
 
 - `PROD_SITE_URL`
-  - Example: `https://www.elevatedthinking.co/`
+  - Example: `https://elevatedthinking.co/`
 
 ## 6. Run the First Production Deployment
 

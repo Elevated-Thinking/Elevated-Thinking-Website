@@ -282,7 +282,7 @@ test("app exposes SEO and sharing metadata", async ({ page }) => {
   await expect(page).toHaveTitle("Elevated Thinking");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     "href",
-    "https://www.elevatedthinking.co/"
+    "https://elevatedthinking.co/"
   );
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
     "content",
@@ -295,8 +295,8 @@ test("app exposes SEO and sharing metadata", async ({ page }) => {
     "og:description":
       "Design-led strategy and AI-enabled product work for complex environments.",
     "og:type": "website",
-    "og:url": "https://www.elevatedthinking.co/",
-    "og:image": "https://www.elevatedthinking.co/og-image.jpg",
+    "og:url": "https://elevatedthinking.co/",
+    "og:image": "https://elevatedthinking.co/og-image.jpg",
     "og:image:width": "1200",
     "og:image:height": "630",
     "og:image:alt": "Elevated Thinking",
@@ -322,34 +322,32 @@ test("generated SEO files and permanent social preview image are served", async 
   expect(robotsText).toContain("User-agent: *");
   expect(robotsText).toContain("Allow: /");
   expect(robotsText).toContain(
-    "Sitemap: https://www.elevatedthinking.co/sitemap.xml"
+    "Sitemap: https://elevatedthinking.co/sitemap.xml"
   );
 
   const sitemapResponse = await page.request.get("/sitemap.xml");
   expect(sitemapResponse.ok()).toBe(true);
   const sitemapText = await sitemapResponse.text();
   expect(sitemapText).toMatch(
-    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/\s*<\/loc>/
+    /<loc>\s*https:\/\/elevatedthinking\.co\/\s*<\/loc>/
   );
   expect(sitemapText).toMatch(
-    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/?\s*<\/loc>/
+    /<loc>\s*https:\/\/elevatedthinking\.co\/about\/?\s*<\/loc>/
   );
   expect(sitemapText).toMatch(
-    /<loc>\s*https:\/\/www\.elevatedthinking\.co\/polaris\/?\s*<\/loc>/
+    /<loc>\s*https:\/\/elevatedthinking\.co\/polaris\/?\s*<\/loc>/
   );
   expect(
+    sitemapText.match(/<loc>\s*https:\/\/elevatedthinking\.co\/\s*<\/loc>/g)
+  ).toHaveLength(1);
+  expect(
     sitemapText.match(
-      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/\s*<\/loc>/g
+      /<loc>\s*https:\/\/elevatedthinking\.co\/polaris\/?\s*<\/loc>/g
     )
   ).toHaveLength(1);
   expect(
     sitemapText.match(
-      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/polaris\/?\s*<\/loc>/g
-    )
-  ).toHaveLength(1);
-  expect(
-    sitemapText.match(
-      /<loc>\s*https:\/\/www\.elevatedthinking\.co\/about\/?\s*<\/loc>/g
+      /<loc>\s*https:\/\/elevatedthinking\.co\/about\/?\s*<\/loc>/g
     )
   ).toHaveLength(1);
 

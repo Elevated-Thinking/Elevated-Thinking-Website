@@ -28,7 +28,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     Sitemap({
-      hostname: "https://www.elevatedthinking.co",
+      hostname: "https://elevatedthinking.co",
       // The plugin discovers "/" from the build output; add client-side routes here as the site grows.
       dynamicRoutes: [],
       generateRobotsTxt: true,

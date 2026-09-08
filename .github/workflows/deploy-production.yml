@@ -105,8 +105,8 @@ jobs:
           test -f dist/robots.txt
           grep -F "User-agent: *" dist/robots.txt
           grep -F "Allow: /" dist/robots.txt
-          grep -F "Sitemap: https://www.elevatedthinking.co/sitemap.xml" dist/robots.txt
-          grep -F "https://www.elevatedthinking.co/" dist/sitemap.xml
+          grep -F "Sitemap: https://elevatedthinking.co/sitemap.xml" dist/robots.txt
+          grep -F "https://elevatedthinking.co/" dist/sitemap.xml
 
       - name: Upload production artifact
         uses: actions/upload-artifact@v7.0.1
