@@ -76,10 +76,18 @@ button {
 
 .polaris-hero {
   align-items: center;
+  column-gap: clamp(2.5rem, 6vw, 5rem);
   display: grid;
-  gap: clamp(2.5rem, 6vw, 5rem);
+  grid-template-areas: "text visual" "lede ." "actions .";
   grid-template-columns: minmax(0, 0.96fr) minmax(22rem, 1.04fr);
   padding: clamp(4rem, 8vw, 7rem) 1.5rem;
+  row-gap: 0;
+}
+.polaris-hero-copy {
+  grid-area: text;
+}
+.polaris-hero-visual {
+  grid-area: visual;
 }
 
 .polaris-hero-copy h1,
@@ -98,9 +106,10 @@ button {
   margin: 0;
   max-width: 10ch;
 }
-.polaris-hero-copy > p:not(.section-eyebrow) {
+.polaris-hero-lede {
   color: rgb(47 47 47 / 0.86);
   font-size: clamp(1.05rem, 1.55vw, 1.22rem);
+  grid-area: lede;
   line-height: 1.65;
   margin: 2rem 0 0;
   max-width: 38rem;
@@ -110,6 +119,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 1.75rem;
+  grid-area: actions;
   margin-top: 2rem;
 }
 .polaris-hero-actions a:first-child,
@@ -382,10 +392,15 @@ button {
     grid-template-columns: 1fr;
   }
   .polaris-hero {
+    grid-template-areas: "visual" "text" "lede" "actions";
     padding-top: 3.5rem;
+    row-gap: 2.5rem;
   }
-  .polaris-hero-visual {
-    order: -1;
+  .polaris-hero-lede {
+    margin-top: 0;
+  }
+  .polaris-hero-actions {
+    margin-top: 0;
   }
   .polaris-overview dl,
   .polaris-cta-actions {
