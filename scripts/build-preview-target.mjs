@@ -7,8 +7,6 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { build } from "vite";
-
 import { rewritePreviewMetadata } from "./preview-metadata.mjs";
 
 const previewBase = process.env.PREVIEW_BASE;
@@ -18,6 +16,13 @@ const outDir = process.env.OUT_DIR ?? "preview-out";
 if (!previewBase) {
   throw new Error("PREVIEW_BASE is required (for example /preview/pr/42/).");
 }
+
+// Set before Vite loads the config: vite.config.ts reads this so the sitemap
+// plugin writes alongside the build instead of into a "dist" that a clean
+// checkout does not have.
+process.env.BUILD_OUT_DIR = outDir;
+
+const { build } = await import("vite");
 
 await rm(outDir, { recursive: true, force: true });
 
