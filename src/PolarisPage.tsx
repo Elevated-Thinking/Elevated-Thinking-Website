@@ -45,14 +45,12 @@ export function PolarisPage() {
             product, design, and delivery to turn a high-stakes operational need
             into an experience people can trust and use.
           </p>
-          <div className="polaris-hero-actions">
-            <a href={calendarUrl} rel="noreferrer" target="_blank">
-              Request a Demo
-            </a>
-            <a href={siteUrl("about/#capabilities")}>
-              Explore our capabilities
-            </a>
-          </div>
+        </div>
+        <div className="polaris-hero-actions reveal-copy" data-reveal="copy">
+          <a href={calendarUrl} rel="noreferrer" target="_blank">
+            Request a Demo
+          </a>
+          <a href={siteUrl("about/#capabilities")}>Explore our capabilities</a>
         </div>
         <div
           className="polaris-hero-visual reveal-image"
