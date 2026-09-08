@@ -49,7 +49,11 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
       "href",
-      "./about/"
+      "/about/"
+    );
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "href",
+      "/polaris/"
     );
     expect(screen.getByRole("link", { name: /^contact$/i })).toHaveAttribute(
       "href",
@@ -204,12 +208,105 @@ describe("App", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
       "href",
-      "../"
+      "/"
     );
     expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
       "aria-current",
       "page"
     );
+  });
+
+  it("renders the Polaris case study from its dedicated path", () => {
+    window.history.replaceState({}, "", "/polaris/");
+
+    render(<App />);
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: /polaris brings clarity to complex mission work\./i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: /recognized for mission-ready innovation\./i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/ussf genai challenge winner/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /explore our capabilities/i })
+    ).toHaveAttribute("href", "/about/#capabilities");
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(
+      screen.getAllByRole("link", {
+        name: /request a demo|start a conversation/i,
+      })
+    ).toHaveLength(2);
+    for (const link of screen.getAllByRole("link", {
+      name: /hello@elevatedthinking\.co/i,
+    })) {
+      expect(link).toHaveAttribute(
+        "href",
+        "mailto:hello@elevatedthinking.co?subject=Hello"
+      );
+    }
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
+      "href",
+      "/"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "/about/"
+    );
+  });
+
+  it("keeps shared navigation within an Azure PR preview", () => {
+    window.history.replaceState({}, "", "/preview/pr/43/polaris/");
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
+      "href",
+      "/preview/pr/43/"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "/preview/pr/43/about/"
+    );
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "href",
+      "/preview/pr/43/polaris/"
+    );
+    expect(
+      screen.getByRole("link", { name: /explore our capabilities/i })
+    ).toHaveAttribute("href", "/preview/pr/43/about/#capabilities");
+  });
+
+  it("keeps shared navigation within the latest main preview", () => {
+    window.history.replaceState({}, "", "/preview/polaris/");
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/elevated home/i)).toHaveAttribute(
+      "href",
+      "/preview/"
+    );
+    expect(screen.getByRole("link", { name: /^about$/i })).toHaveAttribute(
+      "href",
+      "/preview/about/"
+    );
+    expect(screen.getByRole("link", { name: /^polaris$/i })).toHaveAttribute(
+      "href",
+      "/preview/polaris/"
+    );
+    expect(
+      screen.getByRole("link", { name: /explore our capabilities/i })
+    ).toHaveAttribute("href", "/preview/about/#capabilities");
   });
 
   it("renders the requested about page why visual labels", () => {

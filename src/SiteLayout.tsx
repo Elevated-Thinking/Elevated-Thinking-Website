@@ -3,7 +3,15 @@ import type { ReactNode } from "react";
 import logoUrl from "./assets/elevated-logo.svg";
 import { footerEmail } from "./siteConfig";
 
-type SitePage = "home" | "about";
+type SitePage = "home" | "about" | "polaris";
+
+export const siteUrl = (path = "") => {
+  const previewBase = window.location.pathname.match(
+    /^\/preview\/(?:pr\/[^/]+\/)?/
+  )?.[0];
+
+  return `${previewBase ?? "/"}${path.replace(/^\//, "")}`;
+};
 
 export function SiteLayout({
   currentPage,
@@ -13,6 +21,7 @@ export function SiteLayout({
   children: ReactNode;
 }) {
   const isAbout = currentPage === "about";
+  const isPolaris = currentPage === "polaris";
 
   return (
     <div
@@ -29,7 +38,7 @@ export function SiteLayout({
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[var(--color-background)]/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-6">
           <a
-            href={isAbout ? "../" : "#top"}
+            href={currentPage === "home" ? "#top" : siteUrl()}
             className="flex items-center"
             aria-label="Elevated home"
           >
@@ -46,10 +55,16 @@ export function SiteLayout({
             aria-label="Primary"
           >
             <a
-              href={isAbout ? "./" : "./about/"}
+              href={siteUrl("about/")}
               aria-current={isAbout ? "page" : undefined}
             >
               About
+            </a>
+            <a
+              href={siteUrl("polaris/")}
+              aria-current={isPolaris ? "page" : undefined}
+            >
+              Polaris
             </a>
             <a href="#contact">Contact</a>
           </nav>

@@ -1,10 +1,13 @@
 import { AboutPage } from "./AboutPage";
 import { HomePage } from "./HomePage";
+import { PolarisPage } from "./PolarisPage";
 import { SiteLayout } from "./SiteLayout";
 import { useRevealParallax } from "./useRevealParallax";
 
 function getCurrentPage(pathname: string) {
-  return /\/about\/?$/.test(pathname) ? "about" : "home";
+  if (/\/polaris\/?$/.test(pathname)) return "polaris";
+  if (/\/about\/?$/.test(pathname)) return "about";
+  return "home";
 }
 
 export default function ElevatedSite() {
@@ -14,7 +17,13 @@ export default function ElevatedSite() {
 
   return (
     <SiteLayout currentPage={currentPage}>
-      {currentPage === "about" ? <AboutPage /> : <HomePage />}
+      {currentPage === "about" ? (
+        <AboutPage />
+      ) : currentPage === "polaris" ? (
+        <PolarisPage />
+      ) : (
+        <HomePage />
+      )}
     </SiteLayout>
   );
 }

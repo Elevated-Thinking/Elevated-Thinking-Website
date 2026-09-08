@@ -65,6 +65,386 @@ button {
   position: relative;
 }
 
+.polaris-hero,
+.polaris-editorial,
+.polaris-recognition,
+.polaris-contribution,
+.polaris-cta {
+  margin: 0 auto;
+  max-width: 80rem;
+}
+
+.polaris-hero {
+  align-items: center;
+  column-gap: clamp(2.5rem, 6vw, 5rem);
+  display: grid;
+  grid-template-areas: "text visual" "lede ." "actions .";
+  grid-template-columns: minmax(0, 0.96fr) minmax(22rem, 1.04fr);
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem;
+  row-gap: 0;
+}
+.polaris-hero-copy {
+  grid-area: text;
+}
+.polaris-hero-visual {
+  grid-area: visual;
+}
+
+.polaris-hero-copy h1,
+.polaris-overview h2,
+.polaris-editorial h2,
+.polaris-recognition h2,
+.polaris-contribution h2,
+.polaris-cta h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+}
+
+.polaris-hero-copy h1 {
+  font-size: clamp(3.5rem, 7vw, 6.8rem);
+  line-height: 0.92;
+  margin: 0;
+  max-width: 10ch;
+}
+.polaris-hero-lede {
+  color: rgb(47 47 47 / 0.86);
+  font-size: clamp(1.05rem, 1.55vw, 1.22rem);
+  grid-area: lede;
+  line-height: 1.65;
+  margin: 2rem 0 0;
+  max-width: 38rem;
+}
+.polaris-hero-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  grid-area: actions;
+  margin-top: 2rem;
+}
+.polaris-hero-actions a:first-child,
+.polaris-cta-actions > a:first-child {
+  background: var(--color-accent);
+  border-radius: 0.75rem;
+  color: white;
+  padding: 0.9rem 1.45rem;
+}
+.polaris-hero-actions a:last-child {
+  border-bottom: 1px solid var(--color-accent);
+  color: var(--color-text);
+  padding-bottom: 0.15rem;
+}
+.polaris-hero-visual {
+  aspect-ratio: 16 / 9;
+  border-radius: 1.4rem;
+  box-shadow: 0 1.5rem 3rem rgb(47 47 47 / 0.16);
+  overflow: hidden;
+}
+.polaris-hero-visual picture,
+.polaris-hero-visual img {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.polaris-overview {
+  background: var(--color-primary);
+  color: white;
+  max-width: none;
+  padding: clamp(3.5rem, 7vw, 6rem) 1.5rem;
+}
+.polaris-overview-inner {
+  display: grid;
+  gap: 2.5rem;
+  grid-template-columns: 1fr 0.88fr 1.1fr;
+  margin: 0 auto;
+  max-width: 80rem;
+}
+.polaris-overview h2 {
+  font-size: clamp(2.4rem, 4.3vw, 4.4rem);
+  line-height: 1;
+  margin: 0;
+  max-width: 10ch;
+}
+.polaris-overview-inner > p {
+  color: rgb(255 255 255 / 0.85);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  margin: 0;
+}
+.polaris-overview dl {
+  border-left: 1px solid rgb(255 255 255 / 0.55);
+  margin: 0;
+  padding-left: 2.25rem;
+}
+.polaris-overview dl div {
+  border-bottom: 1px solid rgb(255 255 255 / 0.35);
+  padding: 0 0 1rem;
+}
+.polaris-overview dl div + div {
+  padding-top: 1rem;
+}
+.polaris-overview dt {
+  color: var(--color-surface);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.polaris-overview dd {
+  line-height: 1.45;
+  margin: 0.5rem 0 0;
+}
+
+.polaris-editorial {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: clamp(4rem, 7vw, 6rem) 1.5rem;
+}
+.polaris-editorial article {
+  padding: 0 clamp(1.5rem, 3vw, 3rem);
+}
+.polaris-editorial article:first-child {
+  padding-left: 0;
+}
+.polaris-editorial article + article {
+  border-left: 1px solid rgb(55 81 78 / 0.22);
+}
+.polaris-editorial article > p {
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0 0 1.2rem;
+  text-transform: uppercase;
+}
+.polaris-editorial h2 {
+  font-size: clamp(1.65rem, 2.3vw, 2.25rem);
+  font-weight: 400;
+  line-height: 1.28;
+  margin: 0;
+}
+
+.polaris-recognition {
+  padding: clamp(4rem, 7vw, 6rem) 1.5rem;
+}
+.polaris-recognition-heading {
+  max-width: 45rem;
+}
+.polaris-recognition h2 {
+  color: var(--color-primary);
+  font-size: clamp(3rem, 5.8vw, 5.7rem);
+  line-height: 0.94;
+  margin: 0;
+}
+.polaris-recognition-heading > p:last-child {
+  font-size: 1.12rem;
+  line-height: 1.6;
+  max-width: 34rem;
+}
+.polaris-recognition ol {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  margin: 3rem 0 0;
+  padding: 0;
+}
+.polaris-recognition li {
+  align-items: center;
+  border: 1px solid rgb(55 81 78 / 0.28);
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: auto 1fr;
+  min-height: 8.5rem;
+  padding: 1.4rem;
+}
+.polaris-recognition li span {
+  border-right: 1px solid rgb(55 81 78 / 0.28);
+  color: var(--color-primary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.75rem;
+  padding-right: 1.25rem;
+}
+.polaris-recognition li strong {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.polaris-contribution {
+  background: var(--color-primary);
+  color: white;
+  max-width: none;
+  padding: clamp(4rem, 7vw, 6rem) 1.5rem;
+}
+.polaris-contribution > div,
+.polaris-contribution > ol {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80rem;
+}
+.polaris-contribution h2 {
+  font-size: clamp(2.75rem, 5.8vw, 5.7rem);
+  line-height: 0.95;
+  margin: 0;
+  max-width: 15ch;
+}
+.polaris-contribution .section-eyebrow {
+  color: var(--color-accent);
+}
+.polaris-contribution ol {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  list-style: none;
+  margin-top: 3.5rem;
+  padding: 1.5rem 0 0;
+  position: relative;
+}
+.polaris-contribution ol::before {
+  background: rgb(255 255 255 / 0.55);
+  content: "";
+  height: 1px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+.polaris-contribution li {
+  border-right: 1px solid rgb(255 255 255 / 0.5);
+  min-height: 8rem;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+}
+.polaris-contribution li:first-child {
+  border-left: 1px solid rgb(255 255 255 / 0.5);
+}
+.polaris-contribution li::before {
+  background: var(--color-accent);
+  border: 3px solid var(--color-primary);
+  border-radius: 50%;
+  content: "";
+  height: 0.8rem;
+  left: -0.45rem;
+  position: absolute;
+  top: -1.95rem;
+  width: 0.8rem;
+}
+.polaris-contribution li span {
+  color: var(--color-accent);
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.15rem;
+  margin-bottom: 1rem;
+}
+.polaris-contribution li strong {
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.polaris-cta {
+  display: grid;
+  gap: clamp(2.5rem, 7vw, 7rem);
+  grid-template-columns: 1.12fr 0.88fr;
+  padding: clamp(5rem, 9vw, 8rem) 1.5rem;
+}
+.polaris-cta h2 {
+  color: var(--color-primary);
+  font-size: clamp(3rem, 6.4vw, 6.25rem);
+  line-height: 0.92;
+  margin: 0;
+  max-width: 11ch;
+}
+.polaris-cta > div > p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  max-width: 42rem;
+}
+.polaris-cta-actions {
+  align-self: center;
+  border-left: 1px solid rgb(55 81 78 / 0.24);
+  display: flex;
+  flex-direction: column;
+  padding-left: clamp(2rem, 5vw, 5rem);
+}
+.polaris-cta-actions > a:first-child {
+  align-items: center;
+  display: flex;
+  font-size: 1.2rem;
+  justify-content: space-between;
+}
+.polaris-cta-actions > a:first-child span {
+  font-size: 1.7rem;
+}
+.polaris-cta-actions p {
+  margin: 2rem 0 0.4rem;
+}
+.polaris-cta-actions > a:last-child {
+  border-bottom: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  font-size: 1.1rem;
+  width: fit-content;
+}
+
+@media (max-width: 800px) {
+  .polaris-hero,
+  .polaris-overview-inner,
+  .polaris-cta {
+    grid-template-columns: 1fr;
+  }
+  .polaris-hero {
+    grid-template-areas: "visual" "text" "lede" "actions";
+    padding-top: 3.5rem;
+    row-gap: 2.5rem;
+  }
+  .polaris-hero-lede {
+    margin-top: 0;
+  }
+  .polaris-hero-actions {
+    margin-top: 0;
+  }
+  .polaris-overview dl,
+  .polaris-cta-actions {
+    border-left: 0;
+    border-top: 1px solid rgb(255 255 255 / 0.45);
+    padding-left: 0;
+    padding-top: 1.5rem;
+  }
+  .polaris-editorial,
+  .polaris-recognition ol,
+  .polaris-contribution ol {
+    grid-template-columns: 1fr;
+  }
+  .polaris-editorial article,
+  .polaris-editorial article:first-child {
+    padding: 1.5rem 0;
+  }
+  .polaris-editorial article + article {
+    border-left: 0;
+    border-top: 1px solid rgb(55 81 78 / 0.22);
+  }
+  .polaris-recognition li {
+    min-height: 0;
+  }
+  .polaris-contribution li,
+  .polaris-contribution li:first-child {
+    border-left: 1px solid rgb(255 255 255 / 0.5);
+    border-right: 0;
+    min-height: 0;
+  }
+  .polaris-contribution li + li {
+    border-top: 1px solid rgb(255 255 255 / 0.5);
+  }
+  .polaris-contribution li::before {
+    top: -0.45rem;
+  }
+  .polaris-contribution ol::before {
+    display: none;
+  }
+  .polaris-cta-actions {
+    border-color: rgb(55 81 78 / 0.24);
+  }
+}
+
 .image-frame picture,
 .image-frame img {
   display: block;

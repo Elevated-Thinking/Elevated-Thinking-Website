@@ -227,7 +227,7 @@ export function AboutPage() {
         <WhyVisual />
       </section>
 
-      <section className="about-section capabilities-section">
+      <section id="capabilities" className="about-section capabilities-section">
         <CapabilityVisual />
         <div>
           <div className="section-heading reveal-copy" data-reveal="copy">
