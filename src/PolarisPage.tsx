@@ -38,14 +38,14 @@ export function PolarisPage() {
         <div className="polaris-hero-copy reveal-copy" data-reveal="copy">
           <p className="section-eyebrow">Case Study · Space Force</p>
           <h1>Polaris brings clarity to complex mission work.</h1>
-          <p>
-            Polaris is a human-centered digital platform built to help Space
-            Force teams navigate complex information, make confident decisions,
-            and move mission work forward. Elevated partnered across strategy,
-            product, design, and delivery to turn a high-stakes operational need
-            into an experience people can trust and use.
-          </p>
         </div>
+        <p className="polaris-hero-lede reveal-copy" data-reveal="copy">
+          Polaris is a human-centered digital platform built to help Space Force
+          teams navigate complex information, make confident decisions, and move
+          mission work forward. Elevated partnered across strategy, product,
+          design, and delivery to turn a high-stakes operational need into an
+          experience people can trust and use.
+        </p>
         <div className="polaris-hero-actions reveal-copy" data-reveal="copy">
           <a href={calendarUrl} rel="noreferrer" target="_blank">
             Request a Demo
