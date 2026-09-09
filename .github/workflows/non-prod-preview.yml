@@ -148,11 +148,16 @@ jobs:
           ref: ${{ matrix.target.ref }}
           persist-credentials: false
 
+      # Deliberately no `cache: npm` here. This job checks out a pull request's
+      # own ref and runs its install scripts and build, and on a push to main or
+      # a manual dispatch it does so in the default branch's cache scope. Saving
+      # a cache from here would let pull request code poison the npm cache that
+      # Checks and the production release later restore. Redownloading
+      # dependencies costs a few seconds; the cache write is not worth it.
       - name: Set up Node.js
         uses: actions/setup-node@v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
 
       - name: Install dependencies
         run: npm ci

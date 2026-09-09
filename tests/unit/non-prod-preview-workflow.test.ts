@@ -38,6 +38,17 @@ describe("non-prod preview workflow", () => {
     );
   });
 
+  it("never writes an npm cache from the job that runs pull request code", () => {
+    const buildJob = workflow
+      .slice(workflow.indexOf("  build:"), workflow.indexOf("  deploy:"))
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("#"))
+      .join("\n");
+
+    expect(buildJob).toContain("ref: ${{ matrix.target.ref }}");
+    expect(buildJob).not.toMatch(/^\s*cache:\s*npm\s*$/m);
+  });
+
   it("carries dotfiles through preview artifacts", () => {
     expect(workflow).toContain("include-hidden-files: true");
   });
