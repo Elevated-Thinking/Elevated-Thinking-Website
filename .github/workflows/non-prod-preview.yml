@@ -155,7 +155,7 @@ jobs:
       # Checks and the production release later restore. Redownloading
       # dependencies costs a few seconds; the cache write is not worth it.
       - name: Set up Node.js
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -212,7 +212,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
